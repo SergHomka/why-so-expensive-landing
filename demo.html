@@ -112,6 +112,26 @@
   .finding .part p { margin-top: 4px; }
   .finding ul { margin: 6px 0 0; padding-left: 20px; }
   .finding li { margin-bottom: 6px; }
+  details.finding > summary { list-style: none; cursor: pointer; }
+  details.finding > summary::-webkit-details-marker { display: none; }
+  details.finding .teaser { margin-top: 4px; color: var(--muted); }
+  details.finding[open] .teaser { display: none; }
+  details.finding .more { display: inline-block; margin-top: 8px; font-size: 0.9rem; font-weight: 600; color: var(--accent); }
+  details.finding .more::after { content: 'Подробнее и что делать ▾'; }
+  details.finding[open] .more::after { content: 'Свернуть ▴'; }
+  details.finding[open] > summary { margin-bottom: 2px; }
+  details.finding > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 4px; }
+  .badge {
+    float: right; margin-left: 10px; font-size: 0.8rem; font-weight: 700; white-space: nowrap;
+    color: var(--accent); background: var(--bg); border: 1px solid var(--accent); border-radius: 999px; padding: 2px 10px;
+  }
+  .found-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+  .found-head h2 { margin-bottom: 0; }
+  .toggle-all {
+    font-family: inherit; font-size: 0.92rem; font-weight: 600; cursor: pointer;
+    color: var(--accent); background: none; border: 1px solid var(--line); border-radius: 10px; padding: 6px 14px;
+  }
+  .toggle-all:hover { border-color: var(--accent); }
   .finding .saving { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 0.95rem; }
 
   .summary {
@@ -697,17 +717,25 @@ function renderPrompts(s) {
   return html + '</div>';
 }
 
-function renderFinding(f) {
+/* Карточка сворачивается: в заголовке — суть одной строкой, по нажатию — подробности. */
+function renderFinding(f, open) {
   const names = { warn: 'Проблема', info: 'Обратите внимание', ok: 'Здесь всё хорошо' };
-  let html = '<div class="finding ' + f.level + '"><span class="tag">' + names[f.level] + '</span>' +
+  const teaser = f.headline
+    ? f.headline.charAt(0).toUpperCase() + f.headline.slice(1)
+    : f.what.split('. ')[0].replace(/\.?$/, '.');     // первое предложение
+  let html = '<details class="finding ' + f.level + '"' + (open ? ' open' : '') + '><summary>' +
+    '<span class="tag">' + names[f.level] + '</span>' +
+    (f.saving ? '<span class="badge">экономия до ' + money(f.saving) + '</span>' : '') +
     '<h3>' + esc(f.title) + '</h3>' +
+    '<p class="teaser">' + safe(teaser) + '</p>' +
+    '<span class="more"></span></summary>' +
     '<div class="part"><div class="lbl">Что произошло</div><p>' + safe(f.what) + '</p></div>' +
     '<div class="part"><div class="lbl">Почему это стоит денег</div><p>' + safe(f.why) + '</p></div>' +
     '<div class="part"><div class="lbl">Что сделать</div><ul>';
   f.todo.forEach(t => html += '<li>' + safe(t) + '</li>');
   html += '</ul>';
   if (f.saving) html += '<p class="saving">Примерная экономия — до <b>' + money(f.saving) + '</b>, ' + esc(f.savingNote) + '</p>';
-  return html + '</div></div>';
+  return html + '</div></details>';
 }
 
 function renderTech(s) {
@@ -729,8 +757,11 @@ function renderSession(s) {
   const found = diagnose(s);
   let html = renderSummary(s, found) + renderPrompts(s);
   if (found.length) {
-    html += '<h2>Что нашли и что с этим делать</h2>';
-    found.forEach(f => html += renderFinding(f));
+    // открыта только первая проблема — остальное по нажатию
+    const first = found.findIndex(f => f.level !== 'ok');
+    html += '<div class="found-head"><h2>Что нашли и что с этим делать</h2>' +
+      (found.length > 1 ? '<button type="button" class="toggle-all">Развернуть все</button>' : '') + '</div>';
+    found.forEach((f, i) => html += renderFinding(f, i === first || found.length === 1));
   } else {
     html += '<div class="finding info"><span class="tag">Ничего не сработало</span>' +
       '<p>Явных проблем в этой сессии не нашли — так тоже бывает, и это честный ответ.</p></div>';
@@ -822,6 +853,24 @@ $('file').addEventListener('change', e => {
   e.target.value = '';                     // иначе повторный выбор того же файла не сработает
 });
 $('sampleBtn').addEventListener('click', () => render([parse(makeSampleLog(), 'пример')], true));
+
+/* «Развернуть все / Свернуть все». Отчёт перерисовывается, поэтому слушаем на контейнере. */
+function syncToggle() {
+  const btn = result.querySelector('.toggle-all');
+  if (!btn) return;
+  const cards = result.querySelectorAll('details.finding');
+  const allOpen = Array.prototype.every.call(cards, d => d.open);
+  btn.textContent = allOpen ? 'Свернуть все' : 'Развернуть все';
+}
+result.addEventListener('click', e => {
+  const btn = e.target.closest && e.target.closest('.toggle-all');
+  if (!btn) return;
+  const cards = result.querySelectorAll('details.finding');
+  const open = btn.textContent === 'Развернуть все';
+  for (let i = 0; i < cards.length; i++) cards[i].open = open;
+  syncToggle();
+});
+result.addEventListener('toggle', syncToggle, true);   // событие toggle не всплывает — ловим на погружении
 
 ['dragenter', 'dragover'].forEach(ev =>
   drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
