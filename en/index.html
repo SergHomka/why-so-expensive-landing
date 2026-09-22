@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Почему мой AI столько стоит</title>
+<title>Why is my AI so expensive</title>
 <link rel="icon" href="data:,">
-<meta name="description" content="Диагностика расходов на Claude Code, Codex, Cursor и OpenRouter: не «сколько», а «почему столько и что сделать».">
+<meta name="description" content="Cost diagnosis for Claude Code, Codex, Cursor and OpenRouter: not how much, but why so much and what to do about it.">
 <link rel="alternate" hreflang="ru" href="https://serghomka.github.io/why-so-expensive-landing/">
 <link rel="alternate" hreflang="en" href="https://serghomka.github.io/why-so-expensive-landing/en/">
 <style>
@@ -66,7 +66,7 @@
     padding: 6px 12px; border-radius: 999px; margin-bottom: 22px;
   }
 
-  /* Шапка */
+  /* Header */
   header { padding: 20px 0; border-bottom: 1px solid var(--line); }
   .bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
   .logo { font-weight: 800; letter-spacing: -0.02em; }
@@ -75,7 +75,7 @@
   .nav a:hover { color: var(--text); }
   .nav a.lang { font-weight: 700; color: var(--accent); }
 
-  /* Кнопки */
+  /* Buttons */
   .btn {
     display: inline-block; text-decoration: none; font-weight: 700; font-size: 1rem;
     padding: 14px 24px; border-radius: 12px;
@@ -92,7 +92,7 @@
   .hero h1 { max-width: 820px; margin-bottom: 22px; }
   .hero-note { margin-top: 18px; font-size: 0.9rem; color: var(--muted); }
 
-  /* Карточки */
+  /* Cards */
   .grid { display: grid; gap: 16px; margin-top: 32px; }
   .grid.two { grid-template-columns: repeat(2, 1fr); }
   .grid.three { grid-template-columns: repeat(3, 1fr); }
@@ -109,7 +109,7 @@
   }
   .fact p { margin: 0; }
 
-  /* Пример диагноза */
+  /* Sample diagnosis */
   .terminal {
     margin-top: 32px; background: var(--code-bg); color: var(--code-text);
     border-radius: var(--radius); overflow: hidden;
@@ -128,7 +128,7 @@
   .terminal-body .hl { color: var(--accent); font-weight: 700; }
   .caption { margin-top: 12px; font-size: 0.88rem; color: var(--muted); }
 
-  /* Шаги */
+  /* Steps */
   .steps { list-style: none; padding: 0; margin: 32px 0 0; display: grid; gap: 16px; counter-reset: step; }
   .steps > li {
     counter-increment: step; position: relative;
@@ -145,7 +145,7 @@
   .steps h3 { margin-bottom: 4px; }
   .steps p { margin: 0; color: var(--muted); font-size: 0.98rem; }
 
-  /* Правила */
+  /* Rules */
   .rules { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; padding: 0; list-style: none; }
   .rules li {
     border: 1px solid var(--line); background: var(--bg);
@@ -186,153 +186,153 @@
   <div class="wrap bar">
     <div class="logo">Why<span>.</span>So<span>.</span>Expensive</div>
     <nav class="nav">
-      <a href="#problem">Проблема</a>
-      <a href="#how">Как работает</a>
-      <a href="#diff">Отличия</a>
-      <a class="keep" href="#next">Что дальше</a>
-      <a class="keep lang" href="en/index.html" lang="en" hreflang="en">EN</a>
+      <a href="#problem">Problem</a>
+      <a href="#how">How it works</a>
+      <a href="#diff">Why different</a>
+      <a class="keep" href="#next">What's next</a>
+      <a class="keep lang" href="../index.html" lang="ru" hreflang="ru">RU</a>
     </nav>
   </div>
 </header>
 
 <main>
 
-<!-- 1. Заголовок-обещание -->
+<!-- 1. Headline -->
 <section class="hero">
   <div class="wrap">
     <span class="eyebrow">Claude Code · Codex · Cursor · OpenRouter</span>
-    <h1>Счёт пришёл, а за что платил — <span class="accent">непонятно.</span> Объясним.</h1>
-    <p class="lead">Не «сколько вы потратили», а «почему столько и что сделать». Читаем локальные логи AI-инструментов и называем конкретную причину с суммой и действием.</p>
+    <h1>Your AI bill came in, and you have <span class="accent">no idea why.</span> We'll explain.</h1>
+    <p class="lead">Not "how much you spent" but "why it cost that much and what to do about it". We read the local logs of your AI tools and name the specific cause, with a dollar amount and a fix.</p>
     <div class="actions">
-      <a class="btn" href="demo.html">Загрузите свой лог — ответ за 10 секунд</a>
-      <a class="btn ghost" href="#how">Как это работает</a>
+      <a class="btn" href="demo.html">Drop in your log — answer in 10 seconds</a>
+      <a class="btn ghost" href="#how">How it works</a>
     </div>
-    <p class="hero-note">Проект в разработке. Черновик разбора для Claude Code уже работает прямо в браузере — файл никуда не отправляется.</p>
+    <p class="hero-note">Work in progress. An early Claude Code analyzer already runs right in your browser — your file never leaves it.</p>
   </div>
 </section>
 
-<!-- 2. Проблема -->
+<!-- 2. Problem -->
 <section id="problem">
   <div class="wrap">
-    <h2>Вы видите сумму. Причину — нет.</h2>
-    <p class="lead">Если вы платите за AI-инструменты из своего кармана, счёт плавает от недели к неделе, и никто не объясняет почему.</p>
+    <h2>You see the total. Not the reason.</h2>
+    <p class="lead">If you pay for AI tools out of your own pocket, the bill swings from week to week and nobody tells you why.</p>
 
     <div class="grid two">
       <div class="card">
-        <h3>Счётчики показывают «сколько»</h3>
-        <p>Есть бесплатные инструменты, которые красиво рисуют график трат. Но на вопрос «что именно сожгло деньги» они не отвечают.</p>
+        <h3>Trackers show "how much"</h3>
+        <p>There are free tools that draw nice spending charts. But they don't answer the real question: what exactly burned the money?</p>
       </div>
       <div class="card">
-        <h3>Причина спрятана в логах</h3>
-        <p>Один и тот же файл в контексте снова и снова, дорогая модель на простой задаче, повторы после ошибок. Всё это есть в логах, но вручную их никто не разбирает.</p>
+        <h3>The cause is buried in the logs</h3>
+        <p>The same file sent into context again and again, an expensive model on a trivial task, retries after errors. It's all in the logs — but nobody reads them by hand.</p>
       </div>
     </div>
 
     <div class="fact">
-      <p><strong>Почему это стало острее сейчас.</strong> 24 августа 2026 года Cursor перешёл на оплату по токенам. Огромная аудитория впервые видит счёт, который не понимает.</p>
+      <p><strong>Why this matters more now.</strong> On August 24, 2026, Cursor switched to per-token billing. A huge audience is seeing a bill they don't understand for the first time.</p>
     </div>
   </div>
 </section>
 
-<!-- 3. Решение -->
+<!-- 3. Solution -->
 <section id="solution">
   <div class="wrap">
-    <h2>Ответ — в деньгах и с действием</h2>
-    <p class="lead">Вместо графика вы получаете диагноз: где утекли деньги, почему и сколько сэкономит исправление.</p>
+    <h2>An answer in dollars, with a fix</h2>
+    <p class="lead">Instead of a chart you get a diagnosis: where the money leaked, why, and how much fixing it will save.</p>
 
-    <div class="terminal" role="img" aria-label="Пример диагностики расходов">
+    <div class="terminal" role="img" aria-label="Example cost diagnosis">
       <div class="terminal-top">
         <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-        <span>пример ответа</span>
+        <span>sample answer</span>
       </div>
       <div class="terminal-body">
-        <div class="q"><b>&gt;</b> почему вчера было так дорого?</div>
-        <div class="row">Вчера: <span class="hl">14,20 $</span>. Из них <span class="hl">8,60 $</span> — одна сессия в проекте <span class="hl">shop-api</span>.</div>
-        <div class="row"><b>Причина:</b> файл <span class="hl">schema.sql</span> (420 строк) отправлялся в модель 11 раз подряд.</div>
-        <div class="row"><b>Что сделать:</b> добавить его в исключения или сжать контекст. Экономия: <span class="hl">6–7 $ в неделю</span>.</div>
+        <div class="q"><b>&gt;</b> why was yesterday so expensive?</div>
+        <div class="row">Yesterday: <span class="hl">$14.20</span>. Of that, <span class="hl">$8.60</span> was a single session in project <span class="hl">shop-api</span>.</div>
+        <div class="row"><b>Cause:</b> the file <span class="hl">schema.sql</span> (420 lines) was sent to the model 11 times in a row.</div>
+        <div class="row"><b>Fix:</b> exclude it or compact the context. Savings: <span class="hl">$6–7 a week</span>.</div>
       </div>
     </div>
-    <p class="caption">Пример иллюстрирует формат ответа, цифры условные. <a href="demo.html" style="color:var(--accent)">Проверьте на своей сессии Claude Code →</a></p>
+    <p class="caption">The example shows the answer format; the numbers are illustrative. <a href="demo.html" style="color:var(--accent)">Try it on your own Claude Code session →</a></p>
   </div>
 </section>
 
-<!-- 4. Как это работает -->
+<!-- 4. How it works -->
 <section id="how">
   <div class="wrap">
-    <h2>Как это работает</h2>
-    <p class="lead">Всё происходит на вашем компьютере: логи никуда не отправляются.</p>
+    <h2>How it works</h2>
+    <p class="lead">Everything runs on your machine: your logs never leave it.</p>
 
     <ol class="steps">
       <li>
-        <h3>Читает локальные логи</h3>
-        <p>Claude Code и Codex пишут историю сессий на диск. OpenRouter отдаёт данные по вашему ключу. Cursor подключим последним.</p>
+        <h3>Reads local logs</h3>
+        <p>Claude Code and Codex write session history to disk. OpenRouter serves data via your API key. Cursor comes last.</p>
       </li>
       <li>
-        <h3>Приводит всё к одной схеме</h3>
-        <p>Каждое событие превращается в единую запись: модель, токены, кэш, шаг, проект, стоимость и пометка точности.</p>
+        <h3>Normalizes everything into one schema</h3>
+        <p>Every event becomes a single record: model, tokens, cache, step, project, cost, and an accuracy flag.</p>
       </li>
       <li>
-        <h3>Прогоняет семь правил диагностики</h3>
-        <p>Правила написаны один раз и работают для всех инструментов сразу.</p>
+        <h3>Runs seven diagnostic rules</h3>
+        <p>The rules are written once and work for every tool at the same time.</p>
         <ul class="rules">
-          <li>Хождение по кругу</li>
-          <li>Раздутый контекст</li>
-          <li>Дорогая модель на простой задаче</li>
-          <li>Сожжённые попытки после ошибок</li>
-          <li>Сессия без результата</li>
-          <li>Неиспользуемый кэш</li>
-          <li>Забытый фоновый процесс</li>
+          <li>Going in circles</li>
+          <li>Bloated context</li>
+          <li>Expensive model on a simple task</li>
+          <li>Retries burned after errors</li>
+          <li>Session with no result</li>
+          <li>Unused cache</li>
+          <li>Forgotten background process</li>
         </ul>
       </li>
       <li>
-        <h3>Отвечает: почему и что сделать</h3>
-        <p>Вы спрашиваете прямо в Claude Code или в терминале и получаете причину, сумму и конкретное действие.</p>
+        <h3>Answers: why, and what to do</h3>
+        <p>You ask right inside Claude Code or in the terminal and get the cause, the amount, and a concrete action.</p>
       </li>
     </ol>
   </div>
 </section>
 
-<!-- 5. Чем отличается -->
+<!-- 5. What's different -->
 <section id="diff">
   <div class="wrap">
-    <h2>Чем отличается от обычных счётчиков</h2>
+    <h2>How it differs from usual trackers</h2>
 
     <div class="grid three">
       <div class="card">
-        <h3>Объясняет, а не считает</h3>
-        <p>Сумму сегодня показывают бесплатно. Мы отвечаем на вопрос, который остаётся после неё: почему так вышло.</p>
+        <h3>Explains, doesn't just count</h3>
+        <p>Totals are free these days. We answer the question that's left after you see one: why did it turn out this way?</p>
       </div>
       <div class="card">
-        <h3>Одна картина на все инструменты</h3>
-        <p>Одна схема и общие правила вместо отдельного инструмента под каждого провайдера. Новый адаптер сразу получает все семь правил.</p>
+        <h3>One picture across all tools</h3>
+        <p>One schema and shared rules instead of a separate tool per provider. Every new adapter gets all seven rules for free.</p>
       </div>
       <div class="card">
-        <h3>Данные остаются у вас</h3>
-        <p>Анализ идёт локально, без регистрации. Логи не покидают компьютер.</p>
+        <h3>Your data stays with you</h3>
+        <p>Analysis runs locally, no sign-up. Logs never leave your computer.</p>
       </div>
       <div class="card">
-        <h3>Честно про точность</h3>
-        <p>У каждой цифры есть пометка: точная или оценочная. Для Cursor полной картины локально нет, и мы прямо так и пишем.</p>
+        <h3>Honest about accuracy</h3>
+        <p>Every number is flagged as exact or estimated. For Cursor there's no full picture locally, and we say so plainly.</p>
       </div>
       <div class="card">
-        <h3>Открытый код на GitHub</h3>
-        <p>Бесплатные CLI, скилл для Claude Code и MCP-сервер. Платное облако появится позже, когда будет что в нём хранить.</p>
+        <h3>Open source on GitHub</h3>
+        <p>A free CLI, a Claude Code skill, and an MCP server. A paid cloud comes later, once there's something worth storing in it.</p>
       </div>
       <div class="card">
-        <h3>Автор разбирает инциденты</h3>
-        <p>Одиннадцать лет поиска узких мест и разбора сбоев. Правила диагностики строятся на этом опыте, а не на красивых графиках.</p>
+        <h3>Built by an incident investigator</h3>
+        <p>Eleven years of hunting bottlenecks and dissecting outages. The diagnostic rules come from that experience, not from pretty charts.</p>
       </div>
     </div>
   </div>
 </section>
 
-<!-- 6. Что дальше -->
+<!-- 6. What's next -->
 <section id="next">
   <div class="wrap">
     <div class="cta">
-      <span class="eyebrow">Что дальше</span>
-      <h2>Первым выйдет Claude Code, дальше остальные</h2>
-      <p class="lead">Сейчас я проверяю, насколько это нужно. Если тема откликнулась — узнали свой счёт, хотите попробовать раньше всех или есть идея для правила диагностики, — напишите мне.</p>
+      <span class="eyebrow">What's next</span>
+      <h2>Claude Code ships first, the rest follow</h2>
+      <p class="lead">Right now I'm checking how much people need this. If it rings a bell — you recognized your own bill, want early access, or have an idea for a diagnostic rule — drop me a message.</p>
       <ul class="roadmap">
         <li>1. Claude Code</li>
         <li>2. Codex</li>
@@ -340,8 +340,8 @@
         <li>4. Cursor</li>
       </ul>
       <div class="actions">
-        <a class="btn" href="https://t.me/doyrden" target="_blank" rel="noopener">Написать в Telegram</a>
-        <a class="btn ghost" href="https://github.com/SergHomka" target="_blank" rel="noopener">Мой GitHub</a>
+        <a class="btn" href="https://t.me/doyrden" target="_blank" rel="noopener">Message me on Telegram</a>
+        <a class="btn ghost" href="https://github.com/SergHomka" target="_blank" rel="noopener">My GitHub</a>
       </div>
     </div>
   </div>
@@ -351,7 +351,7 @@
 
 <footer>
   <div class="wrap">
-    Проект в разработке. Автор — <a href="https://t.me/doyrden" target="_blank" rel="noopener">@doyrden</a> в Telegram, <a href="https://github.com/SergHomka" target="_blank" rel="noopener">SergHomka</a> на GitHub.
+    Work in progress. Author: <a href="https://t.me/doyrden" target="_blank" rel="noopener">@doyrden</a> on Telegram, <a href="https://github.com/SergHomka" target="_blank" rel="noopener">SergHomka</a> on GitHub.
   </div>
 </footer>
 

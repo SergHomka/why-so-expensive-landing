@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Разбор лога Claude Code</title>
+<title>Claude Code log analyzer</title>
 <link rel="icon" href="data:,">
-<meta name="description" content="Перетащите файл сессии Claude Code — узнайте, во что она обошлась и на чём утекли деньги. Файл не покидает браузер.">
+<meta name="description" content="Drop in a Claude Code session file to see what it cost and where the money leaked. The file never leaves your browser.">
 <link rel="alternate" hreflang="ru" href="https://serghomka.github.io/why-so-expensive-landing/demo.html">
 <link rel="alternate" hreflang="en" href="https://serghomka.github.io/why-so-expensive-landing/en/demo.html">
 <style>
@@ -65,7 +65,7 @@
   .btn.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); }
   .btn.ghost:hover { border-color: var(--accent); color: var(--accent); }
 
-  /* Зона загрузки */
+  /* Drop zone */
   .drop {
     border: 2px dashed var(--line); border-radius: 18px; background: var(--bg-soft);
     padding: clamp(28px, 6vw, 48px) 24px; text-align: center; transition: border-color .15s, background .15s;
@@ -85,7 +85,7 @@
   .where .body { margin-top: 14px; padding: 18px 20px; background: var(--bg-soft); border: 1px solid var(--line); border-radius: var(--radius); }
   .where p:last-child { margin-bottom: 0; }
 
-  /* Результат */
+  /* Report */
   #result { display: none; padding-bottom: 40px; }
   #result.shown { display: block; }
   .total {
@@ -94,8 +94,6 @@
   }
   .total .sum { font-size: clamp(2.4rem, 9vw, 3.6rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1; color: var(--accent); }
   .total .sub { color: #9aa2b1; margin-top: 12px; font-size: 0.95rem; }
-  .total .naive { margin-top: 18px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,.1); font-size: 0.92rem; color: #9aa2b1; }
-  .total .naive b { color: var(--code-text); }
 
   .finding {
     border: 1px solid var(--line); border-left: 4px solid var(--line);
@@ -120,8 +118,8 @@
   details.finding .teaser { margin-top: 4px; color: var(--muted); }
   details.finding[open] .teaser { display: none; }
   details.finding .more { display: inline-block; margin-top: 8px; font-size: 0.9rem; font-weight: 600; color: var(--accent); }
-  details.finding .more::after { content: 'Подробнее и что делать ▾'; }
-  details.finding[open] .more::after { content: 'Свернуть ▴'; }
+  details.finding .more::after { content: 'Details and what to do ▾'; }
+  details.finding[open] .more::after { content: 'Collapse ▴'; }
   details.finding[open] > summary { margin-bottom: 2px; }
   details.finding > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 4px; }
   .badge {
@@ -156,14 +154,13 @@
   .tech ul { margin: 12px 0 0; padding-left: 20px; font-size: 0.92rem; color: var(--muted); }
   .tech li { margin-bottom: 6px; }
   #session { scroll-margin-top: 12px; }
-  .sessions { margin-bottom: 30px; }
 
   table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 0.95rem; }
   th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line); }
   th { font-size: 0.8rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 700; }
   td.num, th.num { text-align: right; white-space: nowrap; }
   tr.active td { font-weight: 700; color: var(--accent); }
-  .sessions { margin-top: 30px; }
+  .sessions { margin-top: 30px; margin-bottom: 30px; }
   .pick { cursor: pointer; }
   .pick:hover td { color: var(--accent); }
 
@@ -186,39 +183,39 @@
 <header>
   <div class="wrap bar">
     <a class="logo" href="index.html">Why<span>.</span>So<span>.</span>Expensive</a>
-    <nav><a class="back" href="index.html">← к описанию</a><a class="back lang" href="en/demo.html" lang="en" hreflang="en">EN</a></nav>
+    <nav><a class="back" href="index.html">← overview</a><a class="back lang" href="../demo.html" lang="ru" hreflang="ru">RU</a></nav>
   </div>
 </header>
 
 <main>
 <section class="hero">
   <div class="wrap">
-    <h1>Во что обошлась ваша сессия — и на чём утекли деньги</h1>
-    <p class="lead">Перетащите файл сессии Claude Code. Разбор идёт прямо в этой вкладке: файл никуда не загружается, аккаунт не нужен.</p>
+    <h1>What your session cost — and where the money leaked</h1>
+    <p class="lead">Drop in a Claude Code session file. The analysis runs right in this tab: the file isn't uploaded anywhere, and you don't need an account.</p>
   </div>
 </section>
 
 <section class="wrap">
   <div class="drop" id="drop">
-    <h2>Перетащите сюда файл <code>.jsonl</code></h2>
-    <p class="muted" style="margin:0">Можно несколько сразу — посчитаем все сессии вместе.</p>
+    <h2>Drop a <code>.jsonl</code> file here</h2>
+    <p class="muted" style="margin:0">You can drop several at once — we'll add up all the sessions.</p>
     <div class="actions">
-      <button class="btn" id="pickBtn" type="button">Выбрать файл</button>
-      <button class="btn ghost" id="sampleBtn" type="button">Нет файла — показать на примере</button>
+      <button class="btn" id="pickBtn" type="button">Choose a file</button>
+      <button class="btn ghost" id="sampleBtn" type="button">No file? Show me an example</button>
     </div>
     <input type="file" id="file" accept=".jsonl,.json,.txt" multiple hidden>
     <div class="privacy">
-      <span>🔒</span><span><b>Файл не покидает браузер.</b> Страница не отправляет ни одного сетевого запроса — можно отключить интернет и проверить.</span>
+      <span>🔒</span><span><b>Your file never leaves the browser.</b> This page makes no network requests — you can turn off the internet and check.</span>
     </div>
   </div>
 
   <details class="where">
-    <summary>Где лежит этот файл?</summary>
+    <summary>Where do I find this file?</summary>
     <div class="body">
-      <p>Claude Code пишет каждую сессию в отдельный файл <code>.jsonl</code>:</p>
+      <p>Claude Code writes every session to its own <code>.jsonl</code> file:</p>
       <p class="small"><b>Windows:</b> <code>%USERPROFILE%\.claude\projects\</code><br>
-      <b>macOS и Linux:</b> <code>~/.claude/projects/</code></p>
-      <p class="small muted" style="margin-bottom:0">Внутри — папка на каждый проект, в ней файлы с именами вида <code>a1b2c3d4-….jsonl</code>. Берите самый свежий или сразу несколько.</p>
+      <b>macOS and Linux:</b> <code>~/.claude/projects/</code></p>
+      <p class="small muted" style="margin-bottom:0">Inside there's a folder per project with files named like <code>a1b2c3d4-….jsonl</code>. Take the latest one, or several at once.</p>
     </div>
   </details>
 </section>
@@ -227,17 +224,17 @@
 
 <section class="wrap">
   <div class="cta-bottom">
-    <h2>Это ранний черновик</h2>
-    <p class="muted" style="margin-bottom:18px">Полная версия задумана как CLI, скилл и MCP-сервер: та же диагностика, но по всем сессиям сразу и для Codex, OpenRouter и Cursor. Если тема откликнулась — напишите, что бы вы хотели видеть в разборе.</p>
-    <a class="btn" href="https://t.me/doyrden" target="_blank" rel="noopener">Написать в Telegram</a>
+    <h2>This is an early draft</h2>
+    <p class="muted" style="margin-bottom:18px">The full version is planned as a CLI, a skill, and an MCP server: the same diagnosis, but across all your sessions at once, and for Codex, OpenRouter, and Cursor too. If this resonates, tell me what you'd like to see in the report.</p>
+    <a class="btn" href="https://t.me/doyrden" target="_blank" rel="noopener">Message me on Telegram</a>
   </div>
 </section>
 </main>
 
 <footer>
   <div class="wrap">
-    Считаем по публичным ценам Anthropic. Разбор идёт локально, данные никуда не отправляются.
-    Автор — <a href="https://t.me/doyrden" target="_blank" rel="noopener">@doyrden</a>,
+    Costs are based on Anthropic's public prices. The analysis runs locally; no data is sent anywhere.
+    Author: <a href="https://t.me/doyrden" target="_blank" rel="noopener">@doyrden</a>,
     <a href="https://github.com/SergHomka" target="_blank" rel="noopener">GitHub</a>.
   </div>
 </footer>
@@ -245,7 +242,7 @@
 <script>
 'use strict';
 
-/* ---------- Справочник цен (доллары за 1 млн токенов) ---------- */
+/* ---------- Price list (dollars per 1M tokens) ---------- */
 const PRICES = {
   'claude-opus-5':     { in: 5,  out: 25, name: 'Opus 5' },
   'claude-opus-4-8':   { in: 5,  out: 25, name: 'Opus 4.8' },
@@ -257,9 +254,9 @@ const PRICES = {
   'claude-fable-5-1':  { in: 10, out: 50, name: 'Fable 5.1' },
   'claude-fable-5':    { in: 10, out: 50, name: 'Fable 5' },
 };
-const FALLBACK = { in: 3, out: 15, name: 'неизвестная модель' };
+const FALLBACK = { in: 3, out: 15, name: 'unknown model' };
 const CHEAP = PRICES['claude-haiku-4-5'];
-const TOKENS_PER_PAGE = 700;   // грубо: страница обычного текста
+const TOKENS_PER_PAGE = 700;   // rough: one page of plain text
 
 function priceFor(model) {
   if (PRICES[model]) return { p: PRICES[model], known: true };
@@ -268,7 +265,7 @@ function priceFor(model) {
   return { p: FALLBACK, known: false };
 }
 
-/* Кэш: запись на 5 минут стоит 1.25× входа, на час — 2×, чтение — 0.1×. */
+/* Cache: a 5-minute write costs 1.25× input, a 1-hour write 2×, a read 0.1×. */
 function costOf(usage, model) {
   const r = priceFor(model), p = r.p;
   const cc = usage.cache_creation || {};
@@ -286,7 +283,7 @@ function costOf(usage, model) {
   return { dollars: dollars, outCost: outCost, known: r.known, ttl1h: w1h > 0 };
 }
 
-/* Текст реплики пользователя без служебных вставок Claude Code. */
+/* The user's message text without Claude Code's service inserts. */
 function promptText(message) {
   if (!message) return '';
   let t = '';
@@ -294,8 +291,8 @@ function promptText(message) {
   else if (Array.isArray(message.content)) {
     message.content.forEach(c => { if (c && c.type === 'text' && c.text) t += c.text + '\n'; });
   }
-  // служебные вставки Claude Code: <system-reminder>, <ide_selection>, <command-name> и т. п. —
-  // у них в имени всегда дефис или подчёркивание, у обычного HTML из текста пользователя — нет
+  // Claude Code service inserts: <system-reminder>, <ide_selection>, <command-name>, etc. —
+  // their names always contain a hyphen or underscore; plain HTML in the user's text doesn't
   t = t.replace(/<([a-z][a-z0-9]*[_-][a-z0-9_-]*)(\s[^>]*)?>[\s\S]*?<\/\1>/g, ' ')
        .replace(/Caveat: The messages below[^\n]*/g, ' ')
        .replace(/\[Request interrupted[^\]]*\]/g, ' ')
@@ -314,9 +311,9 @@ function countImages(message) {
   return n;
 }
 
-/* ---------- Разбор лога ----------
-   Один и тот же ответ лежит в логе по нескольку раз с тем же usage,
-   поэтому считаем по уникальному message.id. */
+/* ---------- Log parsing ----------
+   The same response appears in the log several times with the same usage,
+   so we count by unique message.id. */
 function parse(text, name) {
   const seen = {}, requests = [], files = {}, turns = [];
   let rawCount = 0, badLines = 0, project = null, firstTs = null, lastTs = null,
@@ -344,7 +341,7 @@ function parse(text, name) {
 
     const model = o.message.model || '';
     const c = costOf(o.message.usage, model);
-    naive += c.dollars;                    // так посчитал бы тот, кто не убирает дубли
+    naive += c.dollars;                    // what you'd get without removing duplicates
 
     const id = o.message.id;
     if (id) { if (seen[id]) continue; seen[id] = 1; }
@@ -412,30 +409,25 @@ function mainModel(requests) {
   return best;
 }
 
-/* ---------- Форматирование ---------- */
-const money = d => d < 0.01 ? 'меньше цента' : '$' + d.toFixed(2).replace('.', ',');
+/* ---------- Formatting ---------- */
+const money = d => d < 0.01 ? 'under a cent' : '$' + d.toFixed(2);
 const pct = x => Math.round(x * 100) + '%';
-function plural(n, one, few, many) {
-  const a = n % 10, b = n % 100;
-  const w = a === 1 && b !== 11 ? one : a >= 2 && a <= 4 && (b < 12 || b > 14) ? few : many;
-  return n + ' ' + w;
-}
+function plural(n, one, many) { return n + ' ' + (n === 1 ? one : many); }
 function pages(tokens) {
   let p = Math.max(1, Math.round(tokens / TOKENS_PER_PAGE));
-  if (p >= 20) p = Math.round(p / 10) * 10;       // «около 470 страниц», а не «около 472»
-  return 'около ' + plural(p, 'страницы', 'страниц', 'страниц');
+  if (p >= 20) p = Math.round(p / 10) * 10;       // "about 470 pages", not "about 472"
+  return 'about ' + plural(p, 'page', 'pages');
 }
 function times(x) {
   const r = x >= 10 ? Math.round(x) : Math.round(x * 10) / 10;
-  if (r % 1) return String(r).replace('.', ',') + ' раза';        // «в 1,5 раза»
-  return plural(r, 'раз', 'раза', 'раз');                              // «в 2 раза», «в 6 раз»
+  return r + (r === 1 ? ' time' : ' times');          // "1.5 times", "6 times"
 }
 
-/* ---------- Правила диагностики ----------
-   Каждое правило возвращает карточку:
-   headline — одна фраза для блока «Коротко»,
-   what / why / todo — что произошло, почему это стоит денег, что сделать,
-   saving — примерная экономия в долларах, если её можно честно оценить. */
+/* ---------- Diagnostic rules ----------
+   Each rule returns a card:
+   headline — one sentence for the "In short" block,
+   what / why / todo — what happened, why it costs money, what to do,
+   saving — rough savings in dollars, when it can be estimated honestly. */
 const RULES = [
   function growth(s) {
     const main = s.requests.filter(r => !r.side && r.ctx > 0);
@@ -449,7 +441,7 @@ const RULES = [
     const avg = arr => arr.reduce((a, r) => a + r.dollars, 0) / arr.length;
     const early = avg(main.slice(0, n)), late = avg(main.slice(-n));
 
-    // Оценка: что было бы, если бы каждая новая просьба начиналась с чистой переписки.
+    // Estimate: what if every new request started from a clean conversation.
     let saving = 0;
     main.forEach(r => {
       const start = r.turn.startCtx === null ? first : r.turn.startCtx;
@@ -459,19 +451,19 @@ const RULES = [
 
     return {
       level: ratio >= 5 ? 'warn' : 'info',
-      title: 'Переписка разрослась — каждое сообщение дорожает',
-      headline: 'вы долго работали в одном окне, и к концу модель перечитывала ' + pages(max) + ' на каждое ваше сообщение.',
-      short: 'Закончили задачу — наберите <code>/clear</code> и начните следующую с чистого листа.',
-      what: 'В начале сессии модель перечитывала ' + pages(first) + ', к концу — ' + pages(max) + ', в ' + times(ratio) + ' больше. ' +
-            'Первые шаги стоили в среднем ' + money(early) + ', последние — ' + money(late) + '.',
-      why: 'Модель не помнит разговор. Перед каждым ответом она заново читает всю переписку с самого начала — ваши сообщения, свои ответы, все открытые файлы. ' +
-           'Представьте переводчика, которому платят за каждую прочитанную страницу, и перед каждой новой фразой он перечитывает весь разговор. Чем дольше разговор, тем дороже каждая фраза.',
+      title: 'The conversation grew — every message costs more',
+      headline: 'you worked in one window for a long time, and by the end the model was rereading ' + pages(max) + ' for every message you sent.',
+      short: 'Finished a task? Type <code>/clear</code> and start the next one from a clean slate.',
+      what: 'At the start of the session the model reread ' + pages(first) + ' per message; by the end, ' + pages(max) + ' — ' + times(ratio) + ' as much. ' +
+            'The first steps cost ' + money(early) + ' on average, the last ones ' + money(late) + '.',
+      why: 'The model has no memory of the conversation. Before every answer it rereads the whole thing from the beginning — your messages, its replies, every file it opened. ' +
+           'Picture a translator paid per page read who rereads the entire conversation before each new sentence. The longer the conversation, the more each sentence costs.',
       todo: [
-        'Закончили одну задачу и переходите к другой — наберите <code>/clear</code>. Переписка очистится, следующая задача начнётся с чистого листа.',
-        'Задача та же, но переписка уже длинная — наберите <code>/compact</code>. Claude Code сожмёт разговор в короткую выжимку и продолжит с неё.',
+        'Done with one task and moving to another? Type <code>/clear</code>. The conversation is wiped and the next task starts from scratch.',
+        'Same task, but the conversation is already long? Type <code>/compact</code>. Claude Code condenses the conversation into a short summary and continues from there.',
       ],
       saving: saving >= 0.05 ? saving : 0,
-      savingNote: 'если бы переписка очищалась перед каждой новой вашей просьбой. На деле часть просьб продолжает предыдущую, поэтому реальная экономия меньше.',
+      savingNote: 'if the conversation had been cleared before each new request. In practice some requests continue the previous one, so real savings are smaller.',
     };
   },
 
@@ -482,16 +474,16 @@ const RULES = [
     if (share < 0.4) return null;
     return {
       level: share >= 0.6 ? 'warn' : 'info',
-      title: 'Одна просьба съела большую часть счёта',
-      headline: 'одна ваша просьба обошлась в ' + money(top.dollars) + ' — ' + pct(share) + ' всей сессии.',
-      short: 'Большие задачи давайте частями и проверяйте результат после каждой.',
-      what: (top.text ? 'Просьба «' + clip(top.text, 90) + '» ' : 'Одна просьба ') + 'стоила ' + money(top.dollars) +
-            ' — это ' + pct(share) + ' всей сессии. Чтобы её выполнить, модель сделала ' + plural(top.steps, 'шаг', 'шага', 'шагов') + '.',
-      why: 'Каждый шаг — это отдельное обращение к модели: прочитать файл, что-то проверить, исправить, запустить. ' +
-           'И каждый шаг снова перечитывает всю переписку. Когда задача размыта, модель делает много лишних шагов — пробует, ошибается, переделывает.',
+      title: 'One request ate most of the bill',
+      headline: 'a single request cost ' + money(top.dollars) + ' — ' + pct(share) + ' of the whole session.',
+      short: 'Hand over big tasks in parts and check the result after each one.',
+      what: (top.text ? 'The request "' + clip(top.text, 90) + '" ' : 'One request ') + 'cost ' + money(top.dollars) +
+            ' — ' + pct(share) + ' of the whole session. To complete it, the model took ' + plural(top.steps, 'step', 'steps') + '.',
+      why: 'Every step is a separate call to the model: read a file, check something, fix it, run it. ' +
+           'And every step rereads the whole conversation again. When a task is vague, the model takes lots of extra steps — trying, failing, redoing.',
       todo: [
-        'Разбивайте большую задачу на части: «сначала сделай X», проверили, потом «теперь Y».',
-        'Пишите конкретнее: какой файл, что именно поменять, как понять, что готово. Чем меньше модели гадать, тем меньше шагов.',
+        'Break a big task into parts: "first do X", check it, then "now do Y".',
+        'Be more specific: which file, what exactly to change, how to tell it\'s done. The less the model has to guess, the fewer steps it takes.',
       ],
     };
   },
@@ -505,16 +497,16 @@ const RULES = [
     const cost = th * p.out / 1e6;
     return {
       level: share > 0.5 ? 'warn' : 'info',
-      title: 'Модель много думает про себя',
-      headline: pct(share) + ' текста, за который вы заплатили, — это размышления модели, которые вы даже не видите.',
-      short: 'Простые задачи запускайте с пониженным обдумыванием.',
-      what: 'Из всего, что написала модель, ' + pct(share) + ' — её внутренние размышления, а не ответ вам. Вы их не видите, но платите за них: ' + money(cost) + '.' +
-            (s.effort ? ' В этой сессии стоял уровень обдумывания «' + s.effort + '».' : ''),
-      why: 'Прежде чем ответить, модель пишет черновик «про себя». Это самый дорогой вид текста — он оплачивается по цене ответа. ' +
-           'На сложных задачах черновик окупается, на простых («переименуй файл», «поправь опечатку») — это деньги впустую.',
+      title: 'The model does a lot of thinking to itself',
+      headline: pct(share) + ' of the text you paid for is the model\'s internal reasoning, which you never even see.',
+      short: 'Run simple tasks with lower reasoning effort.',
+      what: 'Of everything the model wrote, ' + pct(share) + ' was its internal reasoning, not the answer to you. You don\'t see it, but you pay for it: ' + money(cost) + '.' +
+            (s.effort ? ' This session used the "' + s.effort + '" effort level.' : ''),
+      why: 'Before answering, the model writes a draft "to itself". That\'s the most expensive kind of text — it\'s billed at the output price. ' +
+           'On hard tasks the draft pays off; on simple ones ("rename this file", "fix the typo") it\'s money down the drain.',
       todo: [
-        'Для простых задач запускайте Claude Code так: <code>claude --effort low</code>. Модель будет думать меньше.',
-        'Для сложных задач (новая функция, поиск трудной ошибки) оставляйте как есть — там размышления окупаются.',
+        'For simple tasks, start Claude Code like this: <code>claude --effort low</code>. The model will think less.',
+        'For hard tasks (a new feature, a tricky bug) leave it as is — there the reasoning pays off.',
       ],
     };
   },
@@ -525,15 +517,15 @@ const RULES = [
     if (!top || top[1] < 3) return null;
     return {
       level: top[1] >= 5 ? 'warn' : 'info',
-      title: 'Хождение по кругу',
-      headline: 'модель ' + plural(top[1], 'раз', 'раза', 'раз') + ' открывала один и тот же файл ' + top[0] + '.',
-      short: 'Скажите модели прямо, что файл уже прочитан.',
-      what: 'Файл ' + top[0] + ' открывался ' + plural(top[1], 'раз', 'раза', 'раз') + ' за сессию.',
-      why: 'Каждый раз, когда модель открывает файл, его содержимое целиком добавляется в переписку. ' +
-           'А дальше, как вы помните, вся переписка перечитывается с каждым сообщением. Один большой файл, открытый пять раз, — это пять копий, которые оплачиваются снова и снова.',
+      title: 'Going in circles',
+      headline: 'the model opened the same file, ' + top[0] + ', ' + top[1] + ' times.',
+      short: 'Tell the model directly that it has already read the file.',
+      what: 'The file ' + top[0] + ' was opened ' + top[1] + ' times during the session.',
+      why: 'Every time the model opens a file, its entire contents are added to the conversation. ' +
+           'And, as you remember, the whole conversation is reread with every message. One big file opened five times means five copies you pay for again and again.',
       todo: [
-        'Заметили, что модель снова открывает тот же файл, — напишите: «' + top[0] + ' ты уже читал, не открывай его заново».',
-        'Если файл большой, а нужна его часть — укажите, какая: «посмотри только функцию оплаты».',
+        'If you notice the model opening the same file again, write: "You\'ve already read ' + top[0] + ', don\'t open it again."',
+        'If the file is big and only part of it matters, say which part: "only look at the payment function".',
       ],
     };
   },
@@ -542,14 +534,14 @@ const RULES = [
     if (s.images < 5) return null;
     return {
       level: s.images >= 12 ? 'warn' : 'info',
-      title: 'Много картинок в переписке',
-      headline: 'в переписку попало ' + plural(s.images, 'картинка', 'картинки', 'картинок') + ', и все они перечитываются с каждым сообщением.',
-      short: 'Просите скриншот, только когда без него никак.',
-      what: 'За сессию в переписку попало ' + plural(s.images, 'картинка', 'картинки', 'картинок') + ' — скриншоты страниц или прикреплённые изображения.',
-      why: 'Для модели картинка — это как несколько страниц текста. И она остаётся в переписке до конца: каждое следующее сообщение снова «смотрит» на все прошлые скриншоты.',
+      title: 'Lots of images in the conversation',
+      headline: plural(s.images, 'image', 'images') + ' ended up in the conversation, and all of them are reread with every message.',
+      short: 'Ask for a screenshot only when there\'s no other way.',
+      what: 'During the session ' + plural(s.images, 'image', 'images') + ' ended up in the conversation — page screenshots or attached pictures.',
+      why: 'To the model, an image is like several pages of text. And it stays in the conversation until the end: every following message "looks" at all the past screenshots again.',
       todo: [
-        'Чтобы проверить текст на странице, скриншот не нужен — попросите модель прочитать текст страницы.',
-        'Если скриншотов было много, а задача закончена, — <code>/clear</code>: старые картинки перестанут перечитываться.',
+        'To check the text on a page you don\'t need a screenshot — ask the model to read the page text instead.',
+        'If there were many screenshots and the task is done, use <code>/clear</code>: the old images will stop being reread.',
       ],
     };
   },
@@ -565,20 +557,20 @@ const RULES = [
     const saving = cheaper ? inCost * (1 - CHEAP.in / p.in) : 0;
     return {
       level: 'info',
-      title: 'Дорогие короткие ответы',
-      headline: plural(heavy.length, 'раз', 'раза', 'раз') + ' модель перечитала всю переписку ради ответа в пару строк.',
-      short: 'Для мелких вопросов переключайтесь на модель подешевле.',
-      what: plural(heavy.length, 'шаг', 'шага', 'шагов') + ' закончились ответом меньше чем в пару абзацев, но перед каждым модель перечитала всю переписку. Суммарно — ' + money(dollars) + '.',
-      why: 'Короткий ответ стоит почти как длинный: основная цена — не в самом ответе, а в чтении всего, что было до него. «Продолжай», «да», «а что это за файл?» в длинной переписке — дорогие вопросы.',
+      title: 'Expensive short answers',
+      headline: heavy.length + ' times the model reread the whole conversation just to reply with a couple of lines.',
+      short: 'Switch to a cheaper model for small questions.',
+      what: plural(heavy.length, 'step', 'steps') + ' ended with a reply shorter than a couple of paragraphs, but before each one the model reread the whole conversation. Total: ' + money(dollars) + '.',
+      why: 'A short answer costs almost as much as a long one: most of the price isn\'t the answer itself but reading everything before it. "Continue", "yes", "what\'s that file?" are expensive questions in a long conversation.',
       todo: cheaper ? [
-        'Для рутины и мелких вопросов переключитесь на модель дешевле: наберите <code>/model</code> и выберите Haiku. Чтение переписки у неё в ' + times(p.in / CHEAP.in) + ' дешевле, чем у ' + p.name + '.',
-        'Короткий вопрос не по текущей задаче задавайте в новом окне — там переписка пустая.',
+        'For routine work and small questions, switch to a cheaper model: type <code>/model</code> and pick Haiku. Rereading the conversation costs $' + CHEAP.in + ' per million tokens on Haiku versus $' + p.in + ' on ' + p.name + '.',
+        'Ask a short question unrelated to the current task in a new window — the conversation there is empty.',
       ] : [
-        'Короткий вопрос не по текущей задаче задавайте в новом окне — там переписка пустая.',
-        'Перед серией мелких правок сделайте <code>/compact</code>: переписка сожмётся, и каждый короткий ответ станет дешевле.',
+        'Ask a short question unrelated to the current task in a new window — the conversation there is empty.',
+        'Before a series of small edits, run <code>/compact</code>: the conversation shrinks, and every short answer gets cheaper.',
       ],
       saving: saving >= 0.05 ? saving : 0,
-      savingNote: 'если бы эти шаги выполняла Haiku вместо ' + p.name + '.',
+      savingNote: 'if these steps had run on Haiku instead of ' + p.name + '.',
     };
   },
 
@@ -588,28 +580,28 @@ const RULES = [
     if (read + fresh === 0 || s.requests.length < 5) return null;
     const share = read / (read + fresh);
     const p = priceFor(s.mainModel).p;
-    const ttl = s.ttl1h ? 'часа' : 'пяти минут';
+    const ttl = s.ttl1h ? 'an hour' : 'five minutes';
     if (share >= 0.7) {
       return {
         level: 'ok',
-        title: 'Скидка на перечитывание работает',
+        title: 'The rereading discount works',
         headline: '',
-        what: pct(share) + ' перечитанной переписки модель взяла со скидкой в 10 раз. Без этой скидки сессия стоила бы примерно на ' + money(read * p.in * 0.9 / 1e6) + ' дороже.',
-        why: 'Claude Code запоминает уже прочитанную переписку, и повторное чтение стоит в десять раз дешевле. Скидка действует, пока вы не делаете долгих перерывов.',
-        todo: ['Ничего делать не нужно — Claude Code делает это сам.'],
+        what: pct(share) + ' of the reread conversation came at a 10× discount. Without it, the session would have cost about ' + money(read * p.in * 0.9 / 1e6) + ' more.',
+        why: 'Claude Code remembers the conversation it has already read, and rereading it costs ten times less. The discount holds as long as you don\'t take long breaks.',
+        todo: ['Nothing to do — Claude Code handles this on its own.'],
       };
     }
     return {
       level: 'warn',
-      title: 'Скидка на перечитывание почти не сработала',
-      headline: 'только ' + pct(share) + ' переписки прочитано со скидкой — остальное по полной цене.',
-      short: 'После долгого перерыва начинайте с <code>/compact</code> или <code>/clear</code>.',
-      what: 'Только ' + pct(share) + ' перечитанной переписки модель взяла со скидкой в 10 раз. Остальное — по полной цене.',
-      why: 'Claude Code запоминает прочитанную переписку, и повторное чтение стоит в десять раз дешевле. Но память держится недолго — в этой сессии около ' + ttl + ' без сообщений. ' +
-           'Отошли на обед, вернулись с новым вопросом — вся длинная переписка читается заново по полной цене.',
+      title: 'The rereading discount barely kicked in',
+      headline: 'only ' + pct(share) + ' of the conversation was read at a discount — the rest at full price.',
+      short: 'After a long break, start with <code>/compact</code> or <code>/clear</code>.',
+      what: 'Only ' + pct(share) + ' of the reread conversation came at a 10× discount. The rest was full price.',
+      why: 'Claude Code remembers the conversation it has read, and rereading it costs ten times less. But that memory doesn\'t last long — in this session, about ' + ttl + ' without messages. ' +
+           'Go to lunch, come back with a new question, and the whole long conversation is read again at full price.',
       todo: [
-        'Вернулись после перерыва к длинной переписке — сначала <code>/compact</code>: читать по полной цене придётся короткую выжимку, а не всю историю.',
-        'Если возвращаетесь уже к другой задаче — <code>/clear</code>.',
+        'Coming back to a long conversation after a break? Run <code>/compact</code> first: you\'ll pay full price for a short summary instead of the whole history.',
+        'If you\'re coming back to a different task, use <code>/clear</code>.',
       ],
     };
   },
@@ -627,17 +619,17 @@ function diagnose(s) {
 
 function clip(t, n) { return t.length > n ? t.slice(0, n).replace(/\s+\S*$/, '') + '…' : t; }
 
-/* ---------- Учебный пример: сессия, где всё пошло не так ---------- */
+/* ---------- Sample: a session where everything went wrong ---------- */
 function makeSampleLog() {
   let seed = 20260824;
   const rnd = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
   const lines = [];
   const t0 = Date.parse('2026-08-24T21:14:00Z');
   const asks = {
-    0:  'Добавь в корзину скидку по промокоду, промокоды лежат в таблице promo',
-    9:  'Тесты падают, почини',
-    14: 'Сделай то же самое для страницы заказов и заодно проверь всю схему базы, что там с индексами',
-    38: 'ок, продолжай',
+    0:  'Add a promo code discount to the cart, the codes are in the promo table',
+    9:  'Tests are failing, fix them',
+    14: 'Do the same for the orders page, and while you\'re at it check the whole database schema for missing indexes',
+    38: 'ok, go on',
   };
   let ctx = 24000;
 
@@ -676,10 +668,10 @@ function makeSampleLog() {
   return lines.join('\n');
 }
 
-/* ---------- Отрисовка ---------- */
+/* ---------- Rendering ---------- */
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-// в текстах правил разрешён только тег <code> для команд; остальное экранируем
+// rule texts may only use the <code> tag for commands; everything else is escaped
 const safe = s => esc(s).replace(/&lt;code&gt;/g, '<code>').replace(/&lt;\/code&gt;/g, '</code>');
 const result = $('result');
 
@@ -691,15 +683,15 @@ function show(html) {
 
 function renderSummary(s, found) {
   const top = found.filter(f => f.level !== 'ok' && f.headline)[0];
-  let html = '<div class="summary"><span class="tag">Коротко</span><p>';
-  html += 'Эта сессия стоила <b>' + money(s.total) + '</b>' +
-    (s.turns.length ? ': ' + plural(s.turns.length, 'ваша просьба', 'ваши просьбы', 'ваших просьб') + ', ' : ', ') +
-    plural(s.uniqueCount, 'шаг', 'шага', 'шагов') + ' модели. ';
+  let html = '<div class="summary"><span class="tag">In short</span><p>';
+  html += 'This session cost <b>' + money(s.total) + '</b>' +
+    (s.turns.length ? ': ' + plural(s.turns.length, 'request', 'requests') + ' from you, ' : ', ') +
+    plural(s.uniqueCount, 'model step', 'model steps') + '. ';
   if (top) {
-    html += 'Главное: ' + safe(top.headline) + '</p><p class="advice">' + safe(top.short) +
-      (top.saving ? ' <b>Примерная экономия — до ' + money(top.saving) + '.</b>' : '') + '</p>';
+    html += 'The main thing: ' + safe(top.headline) + '</p><p class="advice">' + safe(top.short) +
+      (top.saving ? ' <b>Estimated savings: up to ' + money(top.saving) + '.</b>' : '') + '</p>';
   } else {
-    html += 'Явных утечек не нашли — деньги ушли на саму работу.</p>';
+    html += 'No obvious leaks found — the money went into the actual work.</p>';
   }
   return html + '</div>';
 }
@@ -710,64 +702,64 @@ function renderPrompts(s) {
   const sorted = turns.slice().sort((a, b) => b.dollars - a.dollars);
   const top = sorted.slice(0, 3);
   let rest = 0; sorted.slice(3).forEach(t => rest += t.dollars);
-  let html = '<h2>Во что обошлись ваши просьбы</h2><div class="asks">';
+  let html = '<h2>What your requests cost</h2><div class="asks">';
   top.forEach(t => {
-    html += '<div class="ask"><div class="q">«' + esc(clip(t.text, 140)) + '»</div>' +
-      '<div class="meta"><b>' + money(t.dollars) + '</b> · ' + plural(t.steps, 'шаг', 'шага', 'шагов') + ' модели · ' + pct(t.dollars / s.total) + ' сессии</div></div>';
+    html += '<div class="ask"><div class="q">"' + esc(clip(t.text, 140)) + '"</div>' +
+      '<div class="meta"><b>' + money(t.dollars) + '</b> · ' + plural(t.steps, 'model step', 'model steps') + ' · ' + pct(t.dollars / s.total) + ' of the session</div></div>';
   });
-  if (sorted.length === 4) html += '<p class="small muted">Ещё одна просьба — ' + money(rest) + '.</p>';
-  else if (sorted.length > 4) html += '<p class="small muted">Остальные ' + plural(sorted.length - 3, 'просьба', 'просьбы', 'просьб') + ' — вместе ' + money(rest) + '.</p>';
+  if (sorted.length === 4) html += '<p class="small muted">One more request — ' + money(rest) + '.</p>';
+  else if (sorted.length > 4) html += '<p class="small muted">The other ' + (sorted.length - 3) + ' requests — ' + money(rest) + ' together.</p>';
   return html + '</div>';
 }
 
-/* Карточка сворачивается: в заголовке — суть одной строкой, по нажатию — подробности. */
+/* A card collapses: the summary line shows the gist, a click reveals the details. */
 function renderFinding(f, open) {
-  const names = { warn: 'Проблема', info: 'Обратите внимание', ok: 'Здесь всё хорошо' };
+  const names = { warn: 'Problem', info: 'Worth a look', ok: 'All good here' };
   const teaser = f.headline
     ? f.headline.charAt(0).toUpperCase() + f.headline.slice(1)
-    : f.what.split('. ')[0].replace(/\.?$/, '.');     // первое предложение
+    : f.what.split('. ')[0].replace(/\.?$/, '.');     // first sentence
   let html = '<details class="finding ' + f.level + '"' + (open ? ' open' : '') + '><summary>' +
     '<span class="tag">' + names[f.level] + '</span>' +
-    (f.saving ? '<span class="badge">экономия до ' + money(f.saving) + '</span>' : '') +
+    (f.saving ? '<span class="badge">save up to ' + money(f.saving) + '</span>' : '') +
     '<h3>' + esc(f.title) + '</h3>' +
     '<p class="teaser">' + safe(teaser) + '</p>' +
     '<span class="more"></span></summary>' +
-    '<div class="part"><div class="lbl">Что произошло</div><p>' + safe(f.what) + '</p></div>' +
-    '<div class="part"><div class="lbl">Почему это стоит денег</div><p>' + safe(f.why) + '</p></div>' +
-    '<div class="part"><div class="lbl">Что сделать</div><ul>';
+    '<div class="part"><div class="lbl">What happened</div><p>' + safe(f.what) + '</p></div>' +
+    '<div class="part"><div class="lbl">Why it costs money</div><p>' + safe(f.why) + '</p></div>' +
+    '<div class="part"><div class="lbl">What to do</div><ul>';
   f.todo.forEach(t => html += '<li>' + safe(t) + '</li>');
   html += '</ul>';
-  if (f.saving) html += '<p class="saving">Примерная экономия — до <b>' + money(f.saving) + '</b>, ' + esc(f.savingNote) + '</p>';
+  if (f.saving) html += '<p class="saving">Estimated savings: up to <b>' + money(f.saving) + '</b>, ' + esc(f.savingNote) + '</p>';
   return html + '</div></details>';
 }
 
 function renderTech(s) {
   const p = priceFor(s.mainModel).p;
   let tok = 0; s.requests.forEach(r => tok += r.input + r.output + r.cacheRead + r.cacheWrite);
-  let li = '<li>Основная модель: ' + esc(s.mainModel || '—') + ' ($' + p.in + ' за 1 млн токенов входа, $' + p.out + ' — вывода).</li>' +
-    '<li>Всего токенов: ' + (tok / 1e6).toFixed(2).replace('.', ',') + ' млн.</li>';
+  let li = '<li>Main model: ' + esc(s.mainModel || '—') + ' ($' + p.in + ' per 1M input tokens, $' + p.out + ' per 1M output).</li>' +
+    '<li>Total tokens: ' + (tok / 1e6).toFixed(2) + 'M.</li>';
   if (s.rawCount > s.uniqueCount) {
-    li += '<li>В логе ' + s.rawCount + ' записей об ответах модели, уникальных — ' + s.uniqueCount +
-      '. Один и тот же ответ лежит в файле по нескольку раз. Если считать их все, вышло бы ' + money(s.naive) +
-      ' — в ' + times(s.naive / s.total) + ' больше правды.</li>';
+    li += '<li>The log has ' + s.rawCount + ' model response records, ' + s.uniqueCount +
+      ' of them unique. The same response is stored in the file several times. Counting them all would give ' + money(s.naive) +
+      ' — ' + times(s.naive / s.total) + ' the real figure.</li>';
   }
-  if (s.unknownModel) li += '<li>Модели ' + esc(s.unknownModel) + ' нет в справочнике цен — для неё взята средняя ставка, цифра приблизительная.</li>';
-  li += '<li>«Страница» — примерно ' + TOKENS_PER_PAGE + ' токенов, это грубый перевод для наглядности.</li>';
-  return '<details class="tech"><summary>Подробности для любопытных</summary><ul>' + li + '</ul></details>';
+  if (s.unknownModel) li += '<li>' + esc(s.unknownModel) + ' isn\'t in the price list — an average rate was used, so the figure is approximate.</li>';
+  li += '<li>A "page" is roughly ' + TOKENS_PER_PAGE + ' tokens — a rough conversion for illustration.</li>';
+  return '<details class="tech"><summary>Details for the curious</summary><ul>' + li + '</ul></details>';
 }
 
 function renderSession(s) {
   const found = diagnose(s);
   let html = renderSummary(s, found) + renderPrompts(s);
   if (found.length) {
-    // открыта только первая проблема — остальное по нажатию
+    // only the first problem starts open — the rest on click
     const first = found.findIndex(f => f.level !== 'ok');
-    html += '<div class="found-head"><h2>Что нашли и что с этим делать</h2>' +
-      (found.length > 1 ? '<button type="button" class="toggle-all">Развернуть все</button>' : '') + '</div>';
+    html += '<div class="found-head"><h2>What we found and what to do</h2>' +
+      (found.length > 1 ? '<button type="button" class="toggle-all">Expand all</button>' : '') + '</div>';
     found.forEach((f, i) => html += renderFinding(f, i === first || found.length === 1));
   } else {
-    html += '<div class="finding info"><span class="tag">Ничего не сработало</span>' +
-      '<p>Явных проблем в этой сессии не нашли — так тоже бывает, и это честный ответ.</p></div>';
+    html += '<div class="finding info"><span class="tag">Nothing triggered</span>' +
+      '<p>No obvious problems in this session — that happens, and it\'s an honest answer.</p></div>';
   }
   return html + renderTech(s);
 }
@@ -777,10 +769,10 @@ function render(sessions, isSample) {
 
   if (!good.length) {
     const bad = sessions[0];
-    show('<div class="error"><h3>Это не похоже на лог Claude Code</h3>' +
-      '<p class="small" style="margin-bottom:0">В файле' + (bad && bad.badLines ? ' ' + plural(bad.badLines, 'строка', 'строки', 'строк') + ', но ни одной' : ' нет') +
-      ' записи с расходом. Нужны файлы <code>.jsonl</code> из папки <code>~/.claude/projects/</code> — ' +
-      'именно туда Claude Code пишет сессии.</p></div>');
+    show('<div class="error"><h3>This doesn\'t look like a Claude Code log</h3>' +
+      '<p class="small" style="margin-bottom:0">' + (bad && bad.badLines ? 'The file has ' + plural(bad.badLines, 'line', 'lines') + ', but not a single' : 'The file has no') +
+      ' usage record. You need <code>.jsonl</code> files from the <code>~/.claude/projects/</code> folder — ' +
+      'that\'s where Claude Code writes sessions.</p></div>');
     return;
   }
 
@@ -791,15 +783,15 @@ function render(sessions, isSample) {
 
   let html = '';
   if (isSample) {
-    html += '<div class="finding info" style="margin-bottom:22px"><span class="tag">Учебный пример</span>' +
-      '<p style="margin-top:6px">Это выдуманная сессия в настоящем формате Claude Code — чтобы посмотреть разбор без своего файла. ' +
-      'На своём логе цифры и просьбы будут ваши.</p></div>';
+    html += '<div class="finding info" style="margin-bottom:22px"><span class="tag">Sample</span>' +
+      '<p style="margin-top:6px">This is a made-up session in the real Claude Code format, so you can see the report without your own file. ' +
+      'On your own log the numbers and requests will be yours.</p></div>';
   }
 
   html += '<div class="total"><div class="sum">' + money(total) + '</div>' +
-    '<div class="sub">' + (good.length > 1 ? plural(good.length, 'сессия', 'сессии', 'сессий') : 'сессия' + (main.project ? ' в проекте ' + esc(main.project) : '')) +
-    ' · ' + plural(uniq, 'шаг', 'шага', 'шагов') + ' модели' +
-    (main.minutes > 1 && good.length === 1 ? ' · ' + plural(Math.round(main.minutes), 'минута', 'минуты', 'минут') : '') + '</div></div>';
+    '<div class="sub">' + (good.length > 1 ? good.length + ' sessions' : 'session' + (main.project ? ' in project ' + esc(main.project) : '')) +
+    ' · ' + plural(uniq, 'model step', 'model steps') +
+    (main.minutes > 1 && good.length === 1 ? ' · ' + plural(Math.round(main.minutes), 'minute', 'minutes') : '') + '</div></div>';
 
   if (good.length > 1) {
     let rows = '';
@@ -809,9 +801,9 @@ function render(sessions, isSample) {
         '<td class="hide-sm">' + s.uniqueCount + '</td>' +
         '<td class="num">' + money(s.total) + '</td></tr>';
     });
-    html += '<div class="sessions"><h2>Все сессии</h2>' +
-      '<p class="small muted">Ниже — разбор самой дорогой. Нажмите на строку, чтобы посмотреть другую.</p>' +
-      '<table><tr><th>Проект</th><th class="hide-sm">Шагов</th><th class="num">Стоимость</th></tr>' + rows + '</table></div>';
+    html += '<div class="sessions"><h2>All sessions</h2>' +
+      '<p class="small muted">Below is the report for the most expensive one. Click a row to see another.</p>' +
+      '<table><tr><th>Project</th><th class="hide-sm">Steps</th><th class="num">Cost</th></tr>' + rows + '</table></div>';
   }
 
   html += '<div id="session">' + renderSession(main) + '</div>';
@@ -828,11 +820,11 @@ function render(sessions, isSample) {
   }
 }
 
-/* ---------- Чтение файлов ---------- */
+/* ---------- Reading files ---------- */
 function readFiles(fileList) {
   const files = Array.prototype.slice.call(fileList).slice(0, 40);
   if (!files.length) return;
-  show('<p class="lead">Читаю ' + plural(files.length, 'файл', 'файла', 'файлов') + '…</p>');
+  show('<p class="lead">Reading ' + plural(files.length, 'file', 'files') + '…</p>');
 
   let left = files.length;
   const sessions = [];
@@ -840,7 +832,7 @@ function readFiles(fileList) {
     const reader = new FileReader();
     reader.onload = () => {
       try { sessions.push(parse(String(reader.result), f.name)); }
-      catch (e) { /* один битый файл не должен ронять остальные */ }
+      catch (e) { /* one broken file shouldn't take down the rest */ }
       if (--left === 0) render(sessions, false);
     };
     reader.onerror = () => { if (--left === 0) render(sessions, false); };
@@ -848,32 +840,32 @@ function readFiles(fileList) {
   });
 }
 
-/* ---------- События ---------- */
+/* ---------- Events ---------- */
 const drop = $('drop');
 $('pickBtn').addEventListener('click', () => $('file').click());
 $('file').addEventListener('change', e => {
   readFiles(e.target.files);
-  e.target.value = '';                     // иначе повторный выбор того же файла не сработает
+  e.target.value = '';                     // otherwise picking the same file again does nothing
 });
-$('sampleBtn').addEventListener('click', () => render([parse(makeSampleLog(), 'пример')], true));
+$('sampleBtn').addEventListener('click', () => render([parse(makeSampleLog(), 'sample')], true));
 
-/* «Развернуть все / Свернуть все». Отчёт перерисовывается, поэтому слушаем на контейнере. */
+/* "Expand all / Collapse all". The report is re-rendered, so we listen on the container. */
 function syncToggle() {
   const btn = result.querySelector('.toggle-all');
   if (!btn) return;
   const cards = result.querySelectorAll('details.finding');
   const allOpen = Array.prototype.every.call(cards, d => d.open);
-  btn.textContent = allOpen ? 'Свернуть все' : 'Развернуть все';
+  btn.textContent = allOpen ? 'Collapse all' : 'Expand all';
 }
 result.addEventListener('click', e => {
   const btn = e.target.closest && e.target.closest('.toggle-all');
   if (!btn) return;
   const cards = result.querySelectorAll('details.finding');
-  const open = btn.textContent === 'Развернуть все';
+  const open = btn.textContent === 'Expand all';
   for (let i = 0; i < cards.length; i++) cards[i].open = open;
   syncToggle();
 });
-result.addEventListener('toggle', syncToggle, true);   // событие toggle не всплывает — ловим на погружении
+result.addEventListener('toggle', syncToggle, true);   // toggle doesn't bubble — catch it in the capture phase
 
 ['dragenter', 'dragover'].forEach(ev =>
   drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
@@ -881,7 +873,7 @@ result.addEventListener('toggle', syncToggle, true);   // событие toggle 
   drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
 drop.addEventListener('drop', e => { if (e.dataTransfer && e.dataTransfer.files) readFiles(e.dataTransfer.files); });
 
-// перетаскивание мимо зоны не должно открывать файл поверх страницы
+// dropping outside the zone shouldn't open the file over the page
 ['dragover', 'drop'].forEach(ev => document.addEventListener(ev, e => {
   if (!drop.contains(e.target)) e.preventDefault();
 }));
