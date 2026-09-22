@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Разбор лога Claude Code</title>
+<link rel="icon" href="data:,">
+<meta name="description" content="Перетащите файл сессии Claude Code — узнайте, во что она обошлась и на чём утекли деньги. Файл не покидает браузер.">
+<style>
+  :root {
+    --bg: #ffffff; --bg-soft: #f6f7f9; --text: #14171f; --muted: #5b6270;
+    --line: #e3e6ec; --accent: #e8590c; --accent-soft: #fff1e8; --accent-ink: #ffffff;
+    --code-bg: #14171f; --code-text: #e9ecf2;
+    --warn: #c2410c; --warn-bg: #fff1e8; --ok: #15803d; --ok-bg: #eafaf0; --info: #1d4ed8; --info-bg: #eef2ff;
+    --radius: 14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1218; --bg-soft: #161a22; --text: #eef0f4; --muted: #9aa2b1;
+      --line: #262b36; --accent: #ff7a2f; --accent-soft: #2a1b12; --accent-ink: #14171f;
+      --code-bg: #0a0c10; --code-text: #e9ecf2;
+      --warn: #ffa06b; --warn-bg: #2a1b12; --ok: #6ee7a8; --ok-bg: #0f2318; --info: #9db4ff; --info-bg: #151b2e;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 17px; line-height: 1.6; -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 0 20px; }
+  h1, h2, h3 { line-height: 1.15; margin: 0; letter-spacing: -0.02em; }
+  h1 { font-size: clamp(1.9rem, 5vw, 2.8rem); font-weight: 800; margin-bottom: 16px; }
+  h2 { font-size: 1.35rem; font-weight: 750; margin-bottom: 14px; }
+  h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 6px; }
+  p { margin: 0 0 14px; }
+  a { color: var(--accent); }
+  .lead { font-size: 1.08rem; color: var(--muted); }
+  .muted { color: var(--muted); }
+  .small { font-size: 0.88rem; }
+  code {
+    font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+    font-size: 0.88em; background: var(--bg-soft); border: 1px solid var(--line);
+    border-radius: 6px; padding: 1px 6px; overflow-wrap: anywhere;
+  }
+
+  header { padding: 18px 0; border-bottom: 1px solid var(--line); }
+  .bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .logo { font-weight: 800; letter-spacing: -0.02em; text-decoration: none; color: var(--text); }
+  .logo span { color: var(--accent); }
+  .bar a.back { color: var(--muted); text-decoration: none; font-size: 0.95rem; }
+  .bar a.back:hover { color: var(--text); }
+
+  .hero { padding: 48px 0 28px; }
+
+  .btn {
+    display: inline-block; border: 0; cursor: pointer; text-decoration: none;
+    font-family: inherit; font-weight: 700; font-size: 1rem; padding: 14px 24px;
+    border-radius: 12px; background: var(--accent); color: var(--accent-ink);
+  }
+  .btn:hover { opacity: .92; }
+  .btn.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); }
+  .btn.ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Зона загрузки */
+  .drop {
+    border: 2px dashed var(--line); border-radius: 18px; background: var(--bg-soft);
+    padding: clamp(28px, 6vw, 48px) 24px; text-align: center; transition: border-color .15s, background .15s;
+  }
+  .drop.over { border-color: var(--accent); background: var(--accent-soft); }
+  .drop h2 { margin-bottom: 8px; }
+  .drop .actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 22px; }
+  .privacy {
+    margin-top: 18px; font-size: 0.9rem; color: var(--muted);
+    display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap;
+  }
+  .privacy b { color: var(--text); }
+
+  .where { margin-top: 26px; }
+  .where summary { cursor: pointer; font-weight: 600; color: var(--muted); }
+  .where summary:hover { color: var(--text); }
+  .where .body { margin-top: 14px; padding: 18px 20px; background: var(--bg-soft); border: 1px solid var(--line); border-radius: var(--radius); }
+  .where p:last-child { margin-bottom: 0; }
+
+  /* Результат */
+  #result { display: none; padding-bottom: 40px; }
+  #result.shown { display: block; }
+  .total {
+    background: var(--code-bg); color: var(--code-text); border-radius: 18px;
+    padding: clamp(24px, 5vw, 36px); margin-bottom: 26px;
+  }
+  .total .sum { font-size: clamp(2.4rem, 9vw, 3.6rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1; color: var(--accent); }
+  .total .sub { color: #9aa2b1; margin-top: 12px; font-size: 0.95rem; }
+  .total .naive { margin-top: 18px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,.1); font-size: 0.92rem; color: #9aa2b1; }
+  .total .naive b { color: var(--code-text); }
+
+  .finding {
+    border: 1px solid var(--line); border-left: 4px solid var(--line);
+    border-radius: 0 var(--radius) var(--radius) 0; padding: 20px 22px; margin-bottom: 14px; background: var(--bg-soft);
+  }
+  .finding.warn { border-left-color: var(--warn); background: var(--warn-bg); }
+  .finding.ok   { border-left-color: var(--ok);   background: var(--ok-bg); }
+  .finding.info { border-left-color: var(--info); background: var(--info-bg); }
+  .finding .tag { font-size: 0.75rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+  .finding.warn .tag { color: var(--warn); }
+  .finding.ok   .tag { color: var(--ok); }
+  .finding.info .tag { color: var(--info); }
+  .finding p { margin: 6px 0 0; }
+  .finding .act { margin-top: 10px; font-size: 0.95rem; color: var(--muted); }
+  .finding .act b { color: var(--text); font-weight: 600; }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 0.95rem; }
+  th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line); }
+  th { font-size: 0.8rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 700; }
+  td.num, th.num { text-align: right; white-space: nowrap; }
+  tr.active td { font-weight: 700; color: var(--accent); }
+  .sessions { margin-top: 30px; }
+  .pick { cursor: pointer; }
+  .pick:hover td { color: var(--accent); }
+
+  .error { border-left: 4px solid var(--warn); background: var(--warn-bg); padding: 18px 20px; border-radius: 0 var(--radius) var(--radius) 0; }
+
+  footer { border-top: 1px solid var(--line); padding: 26px 0 40px; color: var(--muted); font-size: 0.9rem; }
+  footer a { color: inherit; }
+  .cta-bottom { margin: 36px 0 10px; padding: 26px; border: 1px solid var(--line); border-radius: 18px; background: var(--bg-soft); text-align: center; }
+
+  @media (max-width: 700px) {
+    body { font-size: 16px; }
+    .hero { padding: 32px 0 20px; }
+    .btn { width: 100%; text-align: center; }
+    th.hide-sm, td.hide-sm { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap bar">
+    <a class="logo" href="index.html">Why<span>.</span>So<span>.</span>Expensive</a>
+    <a class="back" href="index.html">← к описанию</a>
+  </div>
+</header>
+
+<main>
+<section class="hero">
+  <div class="wrap">
+    <h1>Во что обошлась ваша сессия — и на чём утекли деньги</h1>
+    <p class="lead">Перетащите файл сессии Claude Code. Разбор идёт прямо в этой вкладке: файл никуда не загружается, аккаунт не нужен.</p>
+  </div>
+</section>
+
+<section class="wrap">
+  <div class="drop" id="drop">
+    <h2>Перетащите сюда файл <code>.jsonl</code></h2>
+    <p class="muted" style="margin:0">Можно несколько сразу — посчитаем все сессии вместе.</p>
+    <div class="actions">
+      <button class="btn" id="pickBtn" type="button">Выбрать файл</button>
+      <button class="btn ghost" id="sampleBtn" type="button">Нет файла — показать на примере</button>
+    </div>
+    <input type="file" id="file" accept=".jsonl,.json,.txt" multiple hidden>
+    <div class="privacy">
+      <span>🔒</span><span><b>Файл не покидает браузер.</b> Страница не отправляет ни одного сетевого запроса — можно отключить интернет и проверить.</span>
+    </div>
+  </div>
+
+  <details class="where">
+    <summary>Где лежит этот файл?</summary>
+    <div class="body">
+      <p>Claude Code пишет каждую сессию в отдельный файл <code>.jsonl</code>:</p>
+      <p class="small"><b>Windows:</b> <code>%USERPROFILE%\.claude\projects\</code><br>
+      <b>macOS и Linux:</b> <code>~/.claude/projects/</code></p>
+      <p class="small muted" style="margin-bottom:0">Внутри — папка на каждый проект, в ней файлы с именами вида <code>a1b2c3d4-….jsonl</code>. Берите самый свежий или сразу несколько.</p>
+    </div>
+  </details>
+</section>
+
+<section class="wrap" id="result"></section>
+
+<section class="wrap">
+  <div class="cta-bottom">
+    <h2>Это ранний черновик</h2>
+    <p class="muted" style="margin-bottom:18px">Полная версия задумана как CLI, скилл и MCP-сервер: та же диагностика, но по всем сессиям сразу и для Codex, OpenRouter и Cursor. Если тема откликнулась — напишите, что бы вы хотели видеть в разборе.</p>
+    <a class="btn" href="https://t.me/doyrden" target="_blank" rel="noopener">Написать в Telegram</a>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    Считаем по публичным ценам Anthropic. Разбор идёт локально, данные никуда не отправляются.
+    Автор — <a href="https://t.me/doyrden" target="_blank" rel="noopener">@doyrden</a>,
+    <a href="https://github.com/SergHomka" target="_blank" rel="noopener">GitHub</a>.
+  </div>
+</footer>
+
+<script>
+'use strict';
+
+/* ---------- Справочник цен (доллары за 1 млн токенов) ---------- */
+const PRICES = {
+  'claude-opus-5':     { in: 5,  out: 25 },
+  'claude-opus-4-8':   { in: 5,  out: 25 },
+  'claude-opus-4-7':   { in: 5,  out: 25 },
+  'claude-opus-4-6':   { in: 5,  out: 25 },
+  'claude-sonnet-5':   { in: 2,  out: 10 },
+  'claude-sonnet-4-6': { in: 3,  out: 15 },
+  'claude-haiku-4-5':  { in: 1,  out: 5  },
+  'claude-fable-5-1':  { in: 10, out: 50 },
+  'claude-fable-5':    { in: 10, out: 50 },
+};
+const FALLBACK = { in: 3, out: 15 };
+
+function priceFor(model) {
+  if (PRICES[model]) return { p: PRICES[model], known: true };
+  const key = Object.keys(PRICES).find(k => model && model.indexOf(k) === 0);
+  if (key) return { p: PRICES[key], known: true };
+  return { p: FALLBACK, known: false };
+}
+
+/* Кэш: запись на 5 минут стоит 1.25× входа, на час — 2×, чтение — 0.1×. */
+function costOf(usage, model) {
+  const r = priceFor(model), p = r.p;
+  const cc = usage.cache_creation || {};
+  const w1h = cc.ephemeral_1h_input_tokens || 0;
+  const w5m = cc.ephemeral_5m_input_tokens || 0;
+  const wPlain = (w1h || w5m) ? 0 : (usage.cache_creation_input_tokens || 0);
+  const dollars =
+      (usage.input_tokens || 0)  * p.in  / 1e6
+    + (usage.output_tokens || 0) * p.out / 1e6
+    + w1h    * p.in * 2    / 1e6
+    + w5m    * p.in * 1.25 / 1e6
+    + wPlain * p.in * 1.25 / 1e6
+    + (usage.cache_read_input_tokens || 0) * p.in * 0.1 / 1e6;
+  return { dollars: dollars, known: r.known };
+}
+
+/* ---------- Разбор лога ----------
+   Ключевой момент: один и тот же ответ лежит в логе по нескольку раз
+   с тем же usage. Без дедупликации по message.id счёт задваивается. */
+function parse(text, name) {
+  const seen = {}, requests = [], files = {};
+  let rawCount = 0, badLines = 0, project = null, firstTs = null, lastTs = null, unknownModel = null, naive = 0;
+
+  const rows = text.split('\n');
+  for (let i = 0; i < rows.length; i++) {
+    const s = rows[i].trim();
+    if (!s) continue;
+    let o;
+    try { o = JSON.parse(s); } catch (e) { badLines++; continue; }
+    if (!o || o.type !== 'assistant' || !o.message || !o.message.usage) continue;
+    rawCount++;
+
+    const model = o.message.model || '';
+    const c = costOf(o.message.usage, model);
+    naive += c.dollars;                    // так посчитал бы тот, кто не убирает дубли
+
+    const id = o.message.id;
+    if (id) { if (seen[id]) continue; seen[id] = 1; }
+    if (!c.known && model) unknownModel = model;
+
+    const ts = o.timestamp ? Date.parse(o.timestamp) : null;
+    if (ts) { if (!firstTs || ts < firstTs) firstTs = ts; if (!lastTs || ts > lastTs) lastTs = ts; }
+    if (!project && o.cwd) {
+      const parts = String(o.cwd).split(/[\\/]/).filter(Boolean);
+      project = parts[parts.length - 1] || null;
+    }
+
+    const u = o.message.usage;
+    const content = o.message.content || [];
+    for (let k = 0; k < content.length; k++) {
+      const b = content[k];
+      if (b && b.type === 'tool_use' && b.input) {
+        const fp = b.input.file_path || b.input.notebook_path;
+        if (fp && ['Read', 'Edit', 'Write', 'NotebookEdit'].indexOf(b.name) >= 0) {
+          const short = String(fp).split(/[\\/]/).pop();
+          files[short] = (files[short] || 0) + 1;
+        }
+      }
+    }
+
+    requests.push({
+      dollars: c.dollars, model: model, ts: ts,
+      input: u.input_tokens || 0,
+      output: u.output_tokens || 0,
+      thinking: (u.output_tokens_details && u.output_tokens_details.thinking_tokens) || 0,
+      cacheRead: u.cache_read_input_tokens || 0,
+      cacheWrite: u.cache_creation_input_tokens || 0,
+    });
+  }
+
+  let total = 0;
+  for (let i = 0; i < requests.length; i++) total += requests[i].dollars;
+
+  return {
+    name: name, requests: requests, files: files, project: project,
+    badLines: badLines, unknownModel: unknownModel,
+    rawCount: rawCount, uniqueCount: requests.length,
+    total: total, naive: naive,
+    minutes: firstTs && lastTs ? (lastTs - firstTs) / 60000 : 0,
+  };
+}
+
+/* ---------- Правила диагностики ---------- */
+const money = d => d < 0.01 ? '<$0,01' : '$' + d.toFixed(2).replace('.', ',');
+const pct = x => Math.round(x * 100) + '%';
+function plural(n, one, few, many) {
+  const a = n % 10, b = n % 100;
+  const w = a === 1 && b !== 11 ? one : a >= 2 && a <= 4 && (b < 12 || b > 14) ? few : many;
+  return n + ' ' + w;
+}
+
+const RULES = [
+  function concentration(s) {
+    if (s.requests.length < 5) return null;
+    const sorted = s.requests.slice().sort((a, b) => b.dollars - a.dollars);
+    const top = sorted.slice(0, 3);
+    let sum = 0; top.forEach(r => sum += r.dollars);
+    const share = sum / s.total;
+    // срабатываем, только если топ-3 заметно выше равномерной доли
+    if (share < 0.25 || share < 1.5 * top.length / s.requests.length) return null;
+    return {
+      level: share > 0.45 ? 'warn' : 'info',
+      title: 'Счёт держится на нескольких запросах',
+      body: 'Три самых дорогих запроса из ' + s.requests.length + ' стоили ' + money(sum) +
+            ' — это ' + pct(share) + ' всей сессии. Самый дорогой сам по себе: ' + money(top[0].dollars) + '.',
+      action: 'Дробите такие шаги. Чем длиннее один запрос, тем дороже обходится каждая попытка его повторить.',
+    };
+  },
+  function thinking(s) {
+    let out = 0, th = 0;
+    s.requests.forEach(r => { out += r.output; th += r.thinking; });
+    if (!out || th / out < 0.25) return null;
+    const share = th / out;
+    const p = priceFor(s.requests[0] ? s.requests[0].model : '').p;
+    return {
+      level: share > 0.5 ? 'warn' : 'info',
+      title: 'Размышления съедают вывод',
+      body: pct(share) + ' выходных токенов — это внутренние размышления модели, а не ответ вам. В деньгах — ' +
+            money(th * p.out / 1e6) + '.',
+      action: 'На рутинных шагах снижайте усилие обдумывания: результат почти тот же, а платите вы за размышления по цене вывода.',
+    };
+  },
+  function cache(s) {
+    let read = 0, fresh = 0;
+    s.requests.forEach(r => { read += r.cacheRead; fresh += r.input + r.cacheWrite; });
+    if (read + fresh === 0 || s.requests.length < 5) return null;
+    const share = read / (read + fresh);
+    const p = priceFor(s.requests[0] ? s.requests[0].model : '').p;
+    if (share >= 0.7) {
+      return {
+        level: 'ok',
+        title: 'Кэш работает',
+        body: pct(share) + ' входного контекста прочитано из кэша — по цене в десять раз ниже обычной. Без кэша эта сессия стоила бы примерно на ' +
+              money(read * p.in * 0.9 / 1e6) + ' дороже.',
+        action: 'Здесь менять нечего: это ровно та часть, где вы не переплачиваете.',
+      };
+    }
+    return {
+      level: 'warn',
+      title: 'Кэш почти не используется',
+      body: 'Только ' + pct(share) + ' контекста прочитано из кэша, остальное оплачено по полной цене. При ' +
+            s.requests.length + ' запросах в сессии это прямая переплата.',
+      action: 'Кэш ломает любое изменение в начале запроса. Держите стабильную часть — инструкции, описания инструментов — в начале и неизменной.',
+    };
+  },
+  function loop(s) {
+    let top = null;
+    for (const k in s.files) if (!top || s.files[k] > top[1]) top = [k, s.files[k]];
+    if (!top || top[1] < 3) return null;
+    return {
+      level: top[1] >= 5 ? 'warn' : 'info',
+      title: 'Хождение по кругу',
+      body: 'Файл ' + top[0] + ' открывался ' + top[1] + ' раз за сессию. Каждое повторное чтение снова оплачивается как контекст.',
+      action: 'Нужен постоянно — держите его в кэшируемой части. Не нужен — исключите из контекста.',
+    };
+  },
+  function shortAnswers(s) {
+    const heavy = s.requests.filter(r => r.output < 200 && (r.cacheRead + r.input) > 20000);
+    if (heavy.length < 3) return null;
+    let dollars = 0; heavy.forEach(r => dollars += r.dollars);
+    if (dollars < 0.02) return null;
+    return {
+      level: 'info',
+      title: 'Большой контекст ради короткого ответа',
+      body: heavy.length + ' запросов протащили через модель весь контекст, чтобы выдать меньше 200 токенов ответа. Суммарно — ' + money(dollars) + '.',
+      action: 'Такие шаги дешевле отдавать модели поменьше: контекст тот же, а цена входа ниже в разы.',
+    };
+  },
+];
+
+function diagnose(s) {
+  const out = [];
+  for (let i = 0; i < RULES.length; i++) {
+    let r = null;
+    try { r = RULES[i](s); } catch (e) { r = null; }
+    if (r) out.push(r);
+  }
+  return out;
+}
+
+/* ---------- Учебный пример: сессия, где всё пошло не так ---------- */
+function makeSampleLog() {
+  let seed = 20260824;
+  const rnd = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+  const lines = [];
+  const t0 = Date.parse('2026-08-24T21:14:00Z');
+  let ctx = 24000;
+
+  for (let i = 0; i < 46; i++) {
+    ctx += 1800 + Math.floor(rnd() * 2600);
+    const cacheRead = i % 9 === 0 ? 0 : Math.floor(ctx * 0.18);
+    const input = ctx - cacheRead;
+    const think = Math.floor(600 + rnd() * 2400);
+    const output = think + Math.floor(120 + rnd() * 900);
+
+    const tools = [];
+    if (i % 3 === 0) tools.push({ type: 'tool_use', name: 'Read', input: { file_path: '/srv/shop-api/db/schema.sql' } });
+    else if (i % 5 === 0) tools.push({ type: 'tool_use', name: 'Edit', input: { file_path: '/srv/shop-api/src/orders.ts' } });
+
+    lines.push(JSON.stringify({
+      type: 'assistant',
+      timestamp: new Date(t0 + i * 97000).toISOString(),
+      cwd: '/srv/shop-api',
+      message: {
+        id: 'msg_sample_' + i, model: 'claude-sonnet-5', role: 'assistant',
+        content: [{ type: 'thinking', thinking: '' }].concat(tools, [{ type: 'text', text: '' }]),
+        usage: {
+          input_tokens: input, output_tokens: output,
+          output_tokens_details: { thinking_tokens: think },
+          cache_read_input_tokens: cacheRead, cache_creation_input_tokens: 0,
+        },
+      },
+    }));
+    if (i % 2 === 0) lines.push(lines[lines.length - 1]);
+  }
+  return lines.join('\n');
+}
+
+/* ---------- Отрисовка ---------- */
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const result = $('result');
+
+function show(html) {
+  result.innerHTML = html;
+  result.classList.add('shown');
+  result.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function renderFindings(s) {
+  const found = diagnose(s);
+  if (!found.length) {
+    const sorted = s.requests.slice().sort((a, b) => b.dollars - a.dollars).slice(0, 3);
+    let rows = '';
+    sorted.forEach((r, i) => {
+      rows += '<tr><td>Запрос ' + (i + 1) + '</td><td class="hide-sm">' + esc(r.model || '—') +
+              '</td><td class="num">' + money(r.dollars) + '</td></tr>';
+    });
+    return '<h2>Разбор</h2><div class="finding info"><span class="tag">Ничего не сработало</span>' +
+      '<p>По пяти правилам явных проблем в этой сессии не нашли — так тоже бывает, и это честный ответ. ' +
+      'Вот куда ушли деньги:</p></div>' +
+      '<table><tr><th>Шаг</th><th class="hide-sm">Модель</th><th class="num">Стоимость</th></tr>' + rows + '</table>';
+  }
+  let html = '<h2>Что нашли</h2>';
+  const names = { warn: 'Проблема', info: 'Обратите внимание', ok: 'Здесь всё хорошо' };
+  found.forEach(f => {
+    html += '<div class="finding ' + f.level + '">' +
+      '<span class="tag">' + names[f.level] + '</span>' +
+      '<h3>' + esc(f.title) + '</h3>' +
+      '<p>' + esc(f.body) + '</p>' +
+      '<p class="act"><b>Что сделать:</b> ' + esc(f.action) + '</p></div>';
+  });
+  return html;
+}
+
+function render(sessions, isSample) {
+  const good = sessions.filter(s => s.uniqueCount > 0);
+
+  if (!good.length) {
+    const bad = sessions[0];
+    show('<div class="error"><h3>Это не похоже на лог Claude Code</h3>' +
+      '<p class="small" style="margin-bottom:0">В файле' + (bad && bad.badLines ? ' ' + plural(bad.badLines, 'строка', 'строки', 'строк') + ', но ни одной' : ' нет') +
+      ' записи с расходом токенов. Нужны файлы <code>.jsonl</code> из папки <code>~/.claude/projects/</code> — ' +
+      'именно туда Claude Code пишет сессии.</p></div>');
+    return;
+  }
+
+  good.sort((a, b) => b.total - a.total);
+  let total = 0, naive = 0, raw = 0, uniq = 0;
+  good.forEach(s => { total += s.total; naive += s.naive; raw += s.rawCount; uniq += s.uniqueCount; });
+  const main = good[0];
+
+  let html = '';
+
+  if (isSample) {
+    html += '<div class="finding info" style="margin-bottom:22px"><span class="tag">Учебный пример</span>' +
+      '<p style="margin-top:6px">Это выдуманная сессия в настоящем формате Claude Code — чтобы посмотреть разбор без своего файла. ' +
+      'На своём логе цифры будут ваши.</p></div>';
+  }
+
+  html += '<div class="total"><div class="sum">' + money(total) + '</div>' +
+    '<div class="sub">' + (good.length > 1 ? plural(good.length, 'сессия', 'сессии', 'сессий') : 'сессия' + (main.project ? ' в проекте ' + esc(main.project) : '')) +
+    ' · ' + plural(uniq, 'запрос', 'запроса', 'запросов') + ' к модели' +
+    (main.minutes > 1 && good.length === 1 ? ' · ' + Math.round(main.minutes) + ' мин' : '') + '</div>';
+
+  if (raw > uniq) {
+    html += '<div class="naive">В логе ' + raw + ' записей, но уникальных ответов — ' + uniq +
+      '. Один и тот же ответ лежит в файле по нескольку раз. Если считать их наивно, вышло бы <b>' +
+      money(naive) + '</b> — в ' + (naive / total).toFixed(1).replace('.', ',') + ' раза больше правды.</div>';
+  }
+  if (main.unknownModel) {
+    html += '<div class="naive">Модель <b>' + esc(main.unknownModel) + '</b> не нашлась в справочнике цен — для неё взята средняя ставка, цифра приблизительная.</div>';
+  }
+  html += '</div>';
+
+  html += renderFindings(main);
+
+  if (good.length > 1) {
+    let rows = '';
+    good.forEach((s, i) => {
+      rows += '<tr class="pick' + (i === 0 ? ' active' : '') + '" data-i="' + i + '">' +
+        '<td>' + esc(s.project || s.name) + '</td>' +
+        '<td class="hide-sm">' + s.uniqueCount + '</td>' +
+        '<td class="num">' + money(s.total) + '</td></tr>';
+    });
+    html += '<div class="sessions"><h2>Все сессии</h2>' +
+      '<p class="small muted">Разбор выше — по самой дорогой. Нажмите на строку, чтобы посмотреть другую.</p>' +
+      '<table><tr><th>Проект</th><th class="hide-sm">Запросов</th><th class="num">Стоимость</th></tr>' + rows + '</table></div>';
+  }
+
+  show(html);
+
+  // переключение между сессиями
+  const rows = result.querySelectorAll('.pick');
+  for (let i = 0; i < rows.length; i++) {
+    rows[i].addEventListener('click', function () {
+      const s = good[+this.getAttribute('data-i')];
+      const block = result.querySelector('h2');
+      // перерисовываем только блок находок
+      const fresh = document.createElement('div');
+      fresh.innerHTML = renderFindings(s);
+      let node = block, toRemove = [];
+      while (node && !node.classList.contains('sessions')) { toRemove.push(node); node = node.nextElementSibling; }
+      const anchor = toRemove[0];
+      while (fresh.firstChild) anchor.parentNode.insertBefore(fresh.firstChild, anchor);
+      toRemove.forEach(n => n.remove());
+      for (let k = 0; k < rows.length; k++) rows[k].classList.remove('active');
+      this.classList.add('active');
+    });
+  }
+}
+
+/* ---------- Чтение файлов ---------- */
+function readFiles(fileList) {
+  const files = Array.prototype.slice.call(fileList).slice(0, 40);
+  if (!files.length) return;
+  show('<p class="lead">Читаю ' + files.length + (files.length === 1 ? ' файл' : ' файлов') + '…</p>');
+
+  let left = files.length;
+  const sessions = [];
+  files.forEach(f => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try { sessions.push(parse(String(reader.result), f.name)); }
+      catch (e) { /* один битый файл не должен ронять остальные */ }
+      if (--left === 0) render(sessions, false);
+    };
+    reader.onerror = () => { if (--left === 0) render(sessions, false); };
+    reader.readAsText(f);
+  });
+}
+
+/* ---------- События ---------- */
+const drop = $('drop');
+$('pickBtn').addEventListener('click', () => $('file').click());
+$('file').addEventListener('change', e => {
+  readFiles(e.target.files);
+  e.target.value = '';                     // иначе повторный выбор того же файла не сработает
+});
+$('sampleBtn').addEventListener('click', () => render([parse(makeSampleLog(), 'пример')], true));
+
+['dragenter', 'dragover'].forEach(ev =>
+  drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave', 'drop'].forEach(ev =>
+  drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', e => { if (e.dataTransfer && e.dataTransfer.files) readFiles(e.dataTransfer.files); });
+
+// перетаскивание мимо зоны не должно открывать файл поверх страницы
+['dragover', 'drop'].forEach(ev => document.addEventListener(ev, e => {
+  if (!drop.contains(e.target)) e.preventDefault();
+}));
+</script>
+</body>
+</html>
