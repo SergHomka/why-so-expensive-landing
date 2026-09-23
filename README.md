@@ -35,11 +35,11 @@
 | 3 | Что модель перечитывает | Картинки в переписке | Скриншоты, которые перечитываются с каждым сообщением | работает |
 | 4 | Что модель перечитывает | Скидка на перечитывание | Сработала ли скидка на повторное чтение (кэш) | работает |
 | 5 | Как поставлена задача | Самая дорогая просьба | Одна просьба съела большую часть счёта | работает |
-| 6 | Как поставлена задача | Ошибки и повторные попытки | Круги «ошиблась — попробовала снова» | в следующем обновлении |
-| 7 | Как поставлена задача | Работа без результата | Деньги потрачены, а ни один файл не изменился | в следующем обновлении |
+| 6 | Как поставлена задача | Ошибки и повторные попытки | Круги «ошиблась — попробовала снова» | работает |
+| 7 | Как поставлена задача | Работа без результата | Деньги потрачены, а ни один файл не изменился | работает |
 | 8 | Модель и настройки | Размышления модели | Доля оплаченного текста, которую вы не видите | работает |
 | 9 | Модель и настройки | Дорогая модель для мелочей | Дорогая модель отвечает в пару строк | работает |
-| 10 | Модель и настройки | Забытые фоновые процессы | Помощники тратят деньги после конца задачи | в следующем обновлении |
+| 10 | Модель и настройки | Забытые фоновые процессы | Фоновые задачи будят модель, когда вы уже ушли | работает |
 
 ## Как считаем
 
@@ -107,11 +107,11 @@ Work in progress. The Claude Code demo works today; Codex, OpenRouter, and Curso
 | 3 | What the model rereads | Images in the conversation | Screenshots reread with every message | live |
 | 4 | What the model rereads | Rereading discount | Whether the discount on rereading (cache) kicked in | live |
 | 5 | How the task was set | Most expensive request | One request ate most of the bill | live |
-| 6 | How the task was set | Errors and retries | "Failed, tried again" loops | next update |
-| 7 | How the task was set | Work with no result | Money spent, yet no file changed | next update |
+| 6 | How the task was set | Errors and retries | "Failed, tried again" loops | live |
+| 7 | How the task was set | Work with no result | Money spent, yet no file changed | live |
 | 8 | Model and settings | Model's thinking | The share of paid text you never see | live |
 | 9 | Model and settings | Expensive model for small stuff | An expensive model giving two-line replies | live |
-| 10 | Model and settings | Forgotten background processes | Helpers still spending after the task is done | next update |
+| 10 | Model and settings | Forgotten background processes | Background tasks wake the model after you have left | live |
 
 ## How we count
 

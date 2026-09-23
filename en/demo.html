@@ -335,14 +335,33 @@ function countImages(message) {
   return n;
 }
 
+const EDIT_TOOLS = ['Edit', 'Write', 'MultiEdit', 'NotebookEdit'];
+const FILE_TOOLS = ['Read'].concat(EDIT_TOOLS);
+const BG_TOOLS = ['Monitor', 'ScheduleWakeup', 'CronCreate'];
+
+function resultText(b) {
+  if (typeof b.content === 'string') return b.content;
+  if (Array.isArray(b.content)) return b.content.map(k => (k && k.text) || '').join(' ');
+  return '';
+}
+
+/* The message came from a background task (it finished or printed something), not from a person. */
+function isAuto(o) {
+  if (o.origin && o.origin.kind && o.origin.kind !== 'human') return true;
+  const c = o.message.content;
+  return typeof c === 'string' && /^\s*<task-notification>/.test(c);
+}
+
 /* ---------- Log parsing ----------
-   The same response appears in the log several times with the same usage,
-   so we count by unique message.id. */
+   One model response is stored as several log entries with the same message.id:
+   each entry repeats the usage but holds its own piece of the response (thinking, text, tool call).
+   So we count money by unique message.id and collect tool calls from every entry. */
 function parse(text, name) {
-  const seen = {}, requests = [], files = {}, turns = [];
+  const byId = {}, toolById = {}, requests = [], files = {}, turns = [], errors = [];
   let rawCount = 0, badLines = 0, project = null, firstTs = null, lastTs = null,
       unknownModel = null, naive = 0, images = 0, effort = null, ttl1h = false;
-  let turn = null;
+  let turn = null, pendingError = false, auto = false, autoCount = 0, streak = 0, maxStreak = 0, humanTs = null;
+  const bg = [];
 
   const rows = text.split('\n');
   for (let i = 0; i < rows.length; i++) {
@@ -354,9 +373,30 @@ function parse(text, name) {
 
     if (o.type === 'user' && o.message) {
       images += countImages(o.message);
-      if (!o.isMeta && !o.isSidechain) {
+      const parts = Array.isArray(o.message.content) ? o.message.content : [];
+      let results = 0;
+      parts.forEach(b => {
+        if (!b || b.type !== 'tool_result') return;
+        results++;
+        const tool = toolById[b.tool_use_id];
+        if (!b.is_error) { streak = 0; return; }
+        if (tool && tool.edit) tool.turn.edits--;           // the edit failed — the file didn't change
+        // a user rejection or a permission rule isn't the model's mistake
+        if (o.toolDenialKind || /doesn't want to proceed|Request interrupted/.test(resultText(b))) return;
+        errors.push({ tool: tool ? tool.name : '' });
+        if (++streak > maxStreak) maxStreak = streak;
+        if (!o.isSidechain) pendingError = true;
+      });
+      if (results || o.isSidechain) continue;
+      if (isAuto(o)) { auto = true; autoCount++; continue; }
+      if (!o.isMeta) {
         const t = promptText(o.message);
-        if (t) { turn = { text: t, dollars: 0, steps: 0, startCtx: null }; turns.push(turn); }
+        if (t) {
+          turn = { text: t, dollars: 0, steps: 0, startCtx: null, edits: 0 };
+          turns.push(turn);
+          auto = false; pendingError = false;
+          humanTs = o.timestamp ? Date.parse(o.timestamp) : humanTs;
+        }
       }
       continue;
     }
@@ -368,47 +408,58 @@ function parse(text, name) {
     naive += c.dollars;                    // what you'd get without removing duplicates
 
     const id = o.message.id;
-    if (id) { if (seen[id]) continue; seen[id] = 1; }
+    let r = id ? byId[id] : null;
+    if (!r) {
+      if (!c.known && model) unknownModel = model;
+      if (c.ttl1h) ttl1h = true;
+      if (o.effort) effort = o.effort;
 
-    if (!c.known && model) unknownModel = model;
-    if (c.ttl1h) ttl1h = true;
-    if (o.effort) effort = o.effort;
+      const ts = o.timestamp ? Date.parse(o.timestamp) : null;
+      if (ts) { if (!firstTs || ts < firstTs) firstTs = ts; if (!lastTs || ts > lastTs) lastTs = ts; }
+      if (!project && o.cwd) {
+        const dirs = String(o.cwd).split(/[\\/]/).filter(Boolean);
+        project = dirs[dirs.length - 1] || null;
+      }
 
-    const ts = o.timestamp ? Date.parse(o.timestamp) : null;
-    if (ts) { if (!firstTs || ts < firstTs) firstTs = ts; if (!lastTs || ts > lastTs) lastTs = ts; }
-    if (!project && o.cwd) {
-      const parts = String(o.cwd).split(/[\\/]/).filter(Boolean);
-      project = parts[parts.length - 1] || null;
+      if (!turn) { turn = { text: '', dollars: 0, steps: 0, startCtx: null, edits: 0 }; turns.push(turn); }
+      const u = o.message.usage;
+      const ctx = (u.input_tokens || 0) + (u.cache_read_input_tokens || 0) + (u.cache_creation_input_tokens || 0);
+      const side = !!o.isSidechain;
+      if (!side && turn.startCtx === null) turn.startCtx = ctx;
+      turn.dollars += c.dollars;
+      turn.steps++;
+
+      r = {
+        dollars: c.dollars, outCost: c.outCost, model: model, ts: ts, side: side, turn: turn, ctx: ctx,
+        afterError: pendingError && !side,     // a step where the model deals with an error that just happened
+        auto: auto && !side,                   // a step triggered by a background task, not a person
+        idle: ts && humanTs ? (ts - humanTs) / 60000 : 0,   // minutes since the person's last message
+        input: u.input_tokens || 0,
+        output: u.output_tokens || 0,
+        thinking: (u.output_tokens_details && u.output_tokens_details.thinking_tokens) || 0,
+        cacheRead: u.cache_read_input_tokens || 0,
+        cacheWrite: u.cache_creation_input_tokens || 0,
+      };
+      if (!side) pendingError = false;
+      requests.push(r);
+      if (id) byId[id] = r;
     }
 
-    const u = o.message.usage;
     const content = o.message.content || [];
     for (let k = 0; k < content.length; k++) {
       const b = content[k];
-      if (b && b.type === 'tool_use' && b.input) {
-        const fp = b.input.file_path || b.input.notebook_path;
-        if (fp && ['Read', 'Edit', 'Write', 'NotebookEdit'].indexOf(b.name) >= 0) {
-          const short = String(fp).split(/[\\/]/).pop();
-          files[short] = (files[short] || 0) + 1;
-        }
+      if (!b || b.type !== 'tool_use' || !b.input) continue;
+      if (b.id) { if (toolById[b.id]) continue; }
+      const edit = EDIT_TOOLS.indexOf(b.name) >= 0;
+      if (b.id) toolById[b.id] = { name: b.name, turn: r.turn, edit: edit };
+      if (edit) r.turn.edits++;
+      if (b.input.run_in_background || BG_TOOLS.indexOf(b.name) >= 0) bg.push(b.input.command || b.input.description || b.name);
+      const fp = b.input.file_path || b.input.notebook_path;
+      if (fp && FILE_TOOLS.indexOf(b.name) >= 0) {
+        const short = String(fp).split(/[\\/]/).pop();
+        files[short] = (files[short] || 0) + 1;
       }
     }
-
-    if (!turn) { turn = { text: '', dollars: 0, steps: 0, startCtx: null }; turns.push(turn); }
-    const ctx = (u.input_tokens || 0) + (u.cache_read_input_tokens || 0) + (u.cache_creation_input_tokens || 0);
-    const side = !!o.isSidechain;
-    if (!side && turn.startCtx === null) turn.startCtx = ctx;
-    turn.dollars += c.dollars;
-    turn.steps++;
-
-    requests.push({
-      dollars: c.dollars, outCost: c.outCost, model: model, ts: ts, side: side, turn: turn, ctx: ctx,
-      input: u.input_tokens || 0,
-      output: u.output_tokens || 0,
-      thinking: (u.output_tokens_details && u.output_tokens_details.thinking_tokens) || 0,
-      cacheRead: u.cache_read_input_tokens || 0,
-      cacheWrite: u.cache_creation_input_tokens || 0,
-    });
   }
 
   let total = 0;
@@ -417,6 +468,7 @@ function parse(text, name) {
   return {
     name: name, requests: requests, files: files, project: project,
     turns: turns.filter(t => t.steps > 0),
+    errors: errors, maxStreak: maxStreak, autoCount: autoCount, bg: bg,
     badLines: badLines, unknownModel: unknownModel, images: images, effort: effort, ttl1h: ttl1h,
     rawCount: rawCount, uniqueCount: requests.length,
     total: total, naive: naive,
@@ -598,6 +650,93 @@ const RULES = [
     };
   },
 
+  function errors(s) {
+    const n = s.errors.length;
+    if (n < 3) return null;
+    let cost = 0;
+    s.requests.forEach(r => { if (r.afterError) cost += r.dollars; });
+    if (cost < 0.05) return null;
+    const share = cost / s.total;
+    const by = {};
+    s.errors.forEach(e => { const k = toolKind(e.tool); by[k] = (by[k] || 0) + 1; });
+    let top = null;
+    for (const k in by) if (!top || by[k] > top[1]) top = [k, by[k]];
+    return {
+      level: share >= 0.15 || s.maxStreak >= 4 ? 'warn' : 'info',
+      title: 'The model stumbled and tried again',
+      headline: n + ' of the model\'s actions ended in an error, and fixing them cost ' + money(cost) + '.',
+      short: 'If the model hits the same error a second time, stop it and give it a hint.',
+      what: 'During the session ' + n + ' of the model\'s actions ended in an error: a command failed, a file wasn\'t found, a tool refused. ' +
+            'What broke most often: ' + top[0] + ' (' + plural(top[1], 'time', 'times') + '). ' +
+            (s.maxStreak >= 3 ? 'At one point the error happened ' + s.maxStreak + ' times in a row. ' : '') +
+            'The steps where the model dealt with errors cost ' + money(cost) + ' — ' + pct(share) + ' of the session.',
+      why: 'Every error means at least one more step: the model reads the error message, thinks, and tries again. And every such step rereads the whole conversation. ' +
+           'If the cause is on your machine — a program isn\'t installed, access is missing, wrong folder — the model can keep hitting it for a long time with no result.',
+      todo: [
+        'The model gets the same error a second time? Stop it (<code>Esc</code> or the stop button) and tell it what\'s wrong. One sentence from you is cheaper than five attempts.',
+        'Write down in <code>CLAUDE.md</code> in the project folder how your tests and build are run. Then the model won\'t have to guess the commands.',
+        'If the problem is on your machine — a missing program or no access — fix it yourself: the model can\'t.',
+      ],
+    };
+  },
+
+  function noResult(s) {
+    const idle = s.turns.filter(t => t.text && t.edits <= 0 && t.steps >= 8 && t.dollars >= 0.1);
+    if (!idle.length) return null;
+    let cost = 0;
+    idle.forEach(t => cost += t.dollars);
+    if (cost / s.total < 0.2 && cost < 0.5) return null;
+    const top = idle.slice().sort((a, b) => b.dollars - a.dollars)[0];
+    return {
+      level: 'info',
+      title: 'Lots of work — not a single file changed',
+      headline: 'the request "' + clip(top.text, 60) + '" cost ' + money(top.dollars) + ', yet not a single file changed.',
+      short: 'Expecting edits but the model keeps reading? Stop it after 5–6 steps and ask what\'s in the way.',
+      what: (idle.length > 1
+        ? idle.length + ' of your requests cost ' + money(cost) + ' together, yet not a single file changed after them. The most expensive: "' + clip(top.text, 90) + '", '
+        : 'The request "' + clip(top.text, 90) + '" cost ' + money(cost) + ', yet not a single file changed after it. It took ') +
+        plural(top.steps, 'model step', 'model steps') + '.',
+      why: 'Sometimes that\'s the point: you asked to explain, find, or check something. Then all is fine — skip this finding. ' +
+           'But if you expected edits, the model spent a long time reading, searching, and trying without getting to the actual work. That usually happens when the task is vague and the model doesn\'t know where to start.',
+      todo: [
+        'Give it an entry point: a file name, a function name, the error text. The model will start with the work, not with searching the whole project.',
+        'Expecting edits, and the model has only been reading for 5–6 steps? Stop it and ask: "What are you doing right now, and what\'s stopping you from starting?"',
+        'For questions without edits, set a frame: "look only at the cart folder and answer in five bullet points".',
+      ],
+    };
+  },
+
+  function background(s) {
+    const auto = s.requests.filter(r => r.auto);
+    if (auto.length < 3) return null;
+    let cost = 0;
+    auto.forEach(r => cost += r.dollars);
+    if (cost < 0.05) return null;
+    // "forgotten" — steps taken after the person had been silent for over 10 minutes: they have most likely left
+    const tail = auto.filter(r => r.idle >= 10);
+    let tailCost = 0;
+    tail.forEach(r => tailCost += r.dollars);
+    const list = s.bg.slice(0, 3).map(t => '"' + clip(String(t).replace(/\s+/g, ' '), 50) + '"').join(', ') + (s.bg.length > 3 ? ' and ' + (s.bg.length - 3) + ' more' : '');
+    return {
+      level: tailCost >= 0.1 ? 'warn' : 'info',
+      title: 'Background tasks woke the model without you',
+      headline: 'the model worked ' + plural(auto.length, 'time', 'times') + ' without being asked — on a signal from a background task — and it cost ' + money(cost) + '.',
+      short: 'Done for the day? Ask the model to stop all background tasks.',
+      what: (s.bg.length ? 'The model started in the background: ' + list + '. ' : '') +
+            'Background tasks woke the model ' + plural(s.autoCount, 'time', 'times') + ', and it took ' + plural(auto.length, 'step', 'steps') + ' you didn\'t ask for — ' + money(cost) + ' worth.' +
+            (tail.length === auto.length ? ' All of them came more than 10 minutes after your last message: you had most likely left.'
+              : tail.length ? ' Of those, ' + plural(tail.length, 'step', 'steps') + ' worth ' + money(tailCost) + ' came more than 10 minutes after your last message: you had most likely left.' : ''),
+      why: 'Claude Code can run long jobs in the background: a server, a build, a helper. When a background task reports something, the model wakes up and rereads the whole conversation again — even if you\'re gone. ' +
+           'A forgotten server or watcher can wake it again and again.',
+      todo: [
+        'When you\'re done, write: "Stop all background tasks." The model will find and close them.',
+        'Leaving for a long time? Close Claude Code: background tasks stop along with it.',
+      ],
+      saving: tailCost >= 0.05 ? tailCost : 0,
+      savingNote: 'if the background tasks had stopped when you left.',
+    };
+  },
+
   function cache(s) {
     let read = 0, fresh = 0;
     s.requests.forEach(r => { read += r.cacheRead; fresh += r.input + r.cacheWrite; });
@@ -632,7 +771,7 @@ const RULES = [
 ];
 
 /* ---------- What we check ----------
-   Ten checks in three groups. Checks marked soon have no rule yet — they come in the next update.
+   Ten checks in three groups. A check with soon: true instead of rule is shown as "Next update".
    prio — order of importance: the most important finding goes into "In short" and starts open. */
 const GROUPS = [
   { id: 'reread', name: 'What the model rereads', about: 'Before every answer the model rereads the whole conversation. Here we look for what bloats it.' },
@@ -640,16 +779,16 @@ const GROUPS = [
   { id: 'model',  name: 'Model and settings',     about: 'We check whether you pay for horsepower where it isn\'t needed.' },
 ];
 const CHECKS = [
-  { n: 1,  group: 'reread', rule: 'growth',       prio: 1, name: 'Conversation length',            about: 'Has the conversation grown so much that every message costs more and more?' },
-  { n: 2,  group: 'reread', rule: 'loop',         prio: 4, name: 'Files reopened',                 about: 'Did the model open the same file again and again?' },
-  { n: 3,  group: 'reread', rule: 'screenshots',  prio: 5, name: 'Images in the conversation',     about: 'How many screenshots got into the conversation and are reread with every message.' },
-  { n: 4,  group: 'reread', rule: 'cache',        prio: 7, name: 'Rereading discount',             about: 'Did the discount on rereading the conversation kick in?' },
-  { n: 5,  group: 'task',   rule: 'bigAsk',       prio: 2, name: 'Most expensive request',         about: 'Did a single request eat most of the bill?' },
-  { n: 6,  group: 'task',   soon: true,                    name: 'Errors and retries',             about: 'What the "failed, tried again, failed again" loops cost.' },
-  { n: 7,  group: 'task',   soon: true,                    name: 'Work with no result',            about: 'Money spent, yet not a single file changed.' },
-  { n: 8,  group: 'model',  rule: 'thinking',     prio: 3, name: 'Model\'s thinking',              about: 'How much of the text you paid for is reasoning you never see.' },
-  { n: 9,  group: 'model',  rule: 'shortAnswers', prio: 6, name: 'Expensive model for small stuff', about: 'Did an expensive model spend its effort on two-line replies?' },
-  { n: 10, group: 'model',  soon: true,                    name: 'Forgotten background processes', about: 'Helpers that kept spending money after the task was over.' },
+  { n: 1,  group: 'reread', rule: 'growth',       prio: 1,  name: 'Conversation length',            about: 'Has the conversation grown so much that every message costs more and more?' },
+  { n: 2,  group: 'reread', rule: 'loop',         prio: 5,  name: 'Files reopened',                 about: 'Did the model open the same file again and again?' },
+  { n: 3,  group: 'reread', rule: 'screenshots',  prio: 7,  name: 'Images in the conversation',     about: 'How many screenshots got into the conversation and are reread with every message.' },
+  { n: 4,  group: 'reread', rule: 'cache',        prio: 10, name: 'Rereading discount',             about: 'Did the discount on rereading the conversation kick in?' },
+  { n: 5,  group: 'task',   rule: 'bigAsk',       prio: 2,  name: 'Most expensive request',         about: 'Did a single request eat most of the bill?' },
+  { n: 6,  group: 'task',   rule: 'errors',       prio: 3,  name: 'Errors and retries',             about: 'What the "failed, tried again, failed again" loops cost.' },
+  { n: 7,  group: 'task',   rule: 'noResult',     prio: 9,  name: 'Work with no result',            about: 'Money spent, yet not a single file changed.' },
+  { n: 8,  group: 'model',  rule: 'thinking',     prio: 4,  name: 'Model\'s thinking',              about: 'How much of the text you paid for is reasoning you never see.' },
+  { n: 9,  group: 'model',  rule: 'shortAnswers', prio: 8,  name: 'Expensive model for small stuff', about: 'Did an expensive model spend its effort on two-line replies?' },
+  { n: 10, group: 'model',  rule: 'background',   prio: 6,  name: 'Forgotten background processes', about: 'Did background tasks wake the model after you had left?' },
 ];
 const RULE = {};
 RULES.forEach(f => RULE[f.name] = f);
@@ -669,6 +808,18 @@ function mainFinding(found) {
   return found.filter(f => f.level !== 'ok' && f.headline).sort((a, b) => a.check.prio - b.check.prio)[0] || null;
 }
 
+/* A tool name from the log, in plain words. */
+function toolKind(name) {
+  if (name === 'Bash' || name === 'PowerShell') return 'terminal commands';
+  if (name === 'Read') return 'reading files';
+  if (EDIT_TOOLS.indexOf(name) >= 0) return 'editing files';
+  if (name === 'Grep' || name === 'Glob') return 'searching files';
+  if (name === 'WebFetch' || name === 'WebSearch') return 'web search';
+  if (/^mcp__playwright/.test(name)) return 'browser control';
+  if (/^mcp__/.test(name)) return 'external connections (MCP)';
+  return name || 'other actions';
+}
+
 function clip(t, n) { return t.length > n ? t.slice(0, n).replace(/\s+\S*$/, '') + '…' : t; }
 
 /* ---------- Sample: a session where everything went wrong ---------- */
@@ -681,13 +832,18 @@ function makeSampleLog() {
     0:  'Add a promo code discount to the cart, the codes are in the promo table',
     9:  'Tests are failing, fix them',
     14: 'Do the same for the orders page, and while you\'re at it check the whole database schema for missing indexes',
+    30: 'Why does a discounted order sometimes get counted twice? Look into it',
     38: 'ok, go on',
   };
+  const failing = [11, 12, 13, 16, 17];   // the tests fail again and again
   let ctx = 24000;
 
-  for (let i = 0; i < 46; i++) {
+  for (let i = 0; i < 49; i++) {
     const at = new Date(t0 + i * 97000).toISOString();
     if (asks[i]) lines.push(JSON.stringify({ type: 'user', timestamp: at, cwd: '/srv/shop-api', message: { role: 'user', content: asks[i] } }));
+    // a server started in the background wakes the model after the person has left
+    if (i >= 46) lines.push(JSON.stringify({ type: 'user', timestamp: at, origin: { kind: 'task-notification' },
+      message: { role: 'user', content: '<task-notification><task-id>dev</task-id><summary>npm run dev: new output</summary></task-notification>' } }));
     if (i >= 20 && i < 30 && i % 2 === 0) {
       lines.push(JSON.stringify({ type: 'user', timestamp: at, message: { role: 'user', content: [
         { type: 'tool_result', tool_use_id: 't' + i, content: [{ type: 'image', source: { type: 'base64', media_type: 'image/png', data: '' } }] }] } }));
@@ -699,9 +855,18 @@ function makeSampleLog() {
     const think = Math.floor(600 + rnd() * 2400);
     const output = i > 38 ? 60 + Math.floor(rnd() * 90) : think + Math.floor(120 + rnd() * 900);
 
-    const tools = [];
-    if (i % 3 === 0) tools.push({ type: 'tool_use', name: 'Read', input: { file_path: '/srv/shop-api/db/schema.sql' } });
-    else if (i % 5 === 0) tools.push({ type: 'tool_use', name: 'Edit', input: { file_path: '/srv/shop-api/src/orders.ts' } });
+    const tools = [], tid = 'toolu_sample_' + i;
+    let result = null;
+    if (i === 41) tools.push({ type: 'tool_use', id: tid, name: 'Bash', input: { command: 'npm run dev', run_in_background: true } });
+    else if (failing.indexOf(i) >= 0) {
+      tools.push({ type: 'tool_use', id: tid, name: 'Bash', input: { command: 'npm test' } });
+      result = { type: 'tool_result', tool_use_id: tid, is_error: true, content: 'Exit code 1\n3 failing' };
+    } else if (i % 3 === 0) {
+      tools.push({ type: 'tool_use', id: tid, name: 'Read', input: { file_path: '/srv/shop-api/db/schema.sql' } });
+      result = { type: 'tool_result', tool_use_id: tid, content: '…' };
+    } else if (i % 5 === 0 && !(i >= 30 && i < 38)) {
+      tools.push({ type: 'tool_use', id: tid, name: 'Edit', input: { file_path: '/srv/shop-api/src/orders.ts' } });
+    }
 
     lines.push(JSON.stringify({
       type: 'assistant', timestamp: at, cwd: '/srv/shop-api', effort: 'high',
@@ -716,6 +881,7 @@ function makeSampleLog() {
       },
     }));
     if (i % 2 === 0) lines.push(lines[lines.length - 1]);
+    if (result) lines.push(JSON.stringify({ type: 'user', timestamp: at, message: { role: 'user', content: [result] } }));
   }
   return lines.join('\n');
 }

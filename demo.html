@@ -338,14 +338,33 @@ function countImages(message) {
   return n;
 }
 
+const EDIT_TOOLS = ['Edit', 'Write', 'MultiEdit', 'NotebookEdit'];
+const FILE_TOOLS = ['Read'].concat(EDIT_TOOLS);
+const BG_TOOLS = ['Monitor', 'ScheduleWakeup', 'CronCreate'];
+
+function resultText(b) {
+  if (typeof b.content === 'string') return b.content;
+  if (Array.isArray(b.content)) return b.content.map(k => (k && k.text) || '').join(' ');
+  return '';
+}
+
+/* Сообщение пришло не от человека, а от фоновой задачи: она закончилась или что-то вывела. */
+function isAuto(o) {
+  if (o.origin && o.origin.kind && o.origin.kind !== 'human') return true;
+  const c = o.message.content;
+  return typeof c === 'string' && /^\s*<task-notification>/.test(c);
+}
+
 /* ---------- Разбор лога ----------
-   Один и тот же ответ лежит в логе по нескольку раз с тем же usage,
-   поэтому считаем по уникальному message.id. */
+   Один ответ модели лежит в логе несколькими записями с одним message.id:
+   в каждой записи тот же расход, но свой кусок ответа (размышления, текст, вызов инструмента).
+   Поэтому деньги считаем по уникальному message.id, а вызовы инструментов собираем из всех записей. */
 function parse(text, name) {
-  const seen = {}, requests = [], files = {}, turns = [];
+  const byId = {}, toolById = {}, requests = [], files = {}, turns = [], errors = [];
   let rawCount = 0, badLines = 0, project = null, firstTs = null, lastTs = null,
       unknownModel = null, naive = 0, images = 0, effort = null, ttl1h = false;
-  let turn = null;
+  let turn = null, pendingError = false, auto = false, autoCount = 0, streak = 0, maxStreak = 0, humanTs = null;
+  const bg = [];
 
   const rows = text.split('\n');
   for (let i = 0; i < rows.length; i++) {
@@ -357,9 +376,30 @@ function parse(text, name) {
 
     if (o.type === 'user' && o.message) {
       images += countImages(o.message);
-      if (!o.isMeta && !o.isSidechain) {
+      const parts = Array.isArray(o.message.content) ? o.message.content : [];
+      let results = 0;
+      parts.forEach(b => {
+        if (!b || b.type !== 'tool_result') return;
+        results++;
+        const tool = toolById[b.tool_use_id];
+        if (!b.is_error) { streak = 0; return; }
+        if (tool && tool.edit) tool.turn.edits--;           // правка не прошла — файл не изменился
+        // отказ пользователя или запрет правилами — не ошибка модели
+        if (o.toolDenialKind || /doesn't want to proceed|Request interrupted/.test(resultText(b))) return;
+        errors.push({ tool: tool ? tool.name : '' });
+        if (++streak > maxStreak) maxStreak = streak;
+        if (!o.isSidechain) pendingError = true;
+      });
+      if (results || o.isSidechain) continue;
+      if (isAuto(o)) { auto = true; autoCount++; continue; }
+      if (!o.isMeta) {
         const t = promptText(o.message);
-        if (t) { turn = { text: t, dollars: 0, steps: 0, startCtx: null }; turns.push(turn); }
+        if (t) {
+          turn = { text: t, dollars: 0, steps: 0, startCtx: null, edits: 0 };
+          turns.push(turn);
+          auto = false; pendingError = false;
+          humanTs = o.timestamp ? Date.parse(o.timestamp) : humanTs;
+        }
       }
       continue;
     }
@@ -371,47 +411,58 @@ function parse(text, name) {
     naive += c.dollars;                    // так посчитал бы тот, кто не убирает дубли
 
     const id = o.message.id;
-    if (id) { if (seen[id]) continue; seen[id] = 1; }
+    let r = id ? byId[id] : null;
+    if (!r) {
+      if (!c.known && model) unknownModel = model;
+      if (c.ttl1h) ttl1h = true;
+      if (o.effort) effort = o.effort;
 
-    if (!c.known && model) unknownModel = model;
-    if (c.ttl1h) ttl1h = true;
-    if (o.effort) effort = o.effort;
+      const ts = o.timestamp ? Date.parse(o.timestamp) : null;
+      if (ts) { if (!firstTs || ts < firstTs) firstTs = ts; if (!lastTs || ts > lastTs) lastTs = ts; }
+      if (!project && o.cwd) {
+        const dirs = String(o.cwd).split(/[\\/]/).filter(Boolean);
+        project = dirs[dirs.length - 1] || null;
+      }
 
-    const ts = o.timestamp ? Date.parse(o.timestamp) : null;
-    if (ts) { if (!firstTs || ts < firstTs) firstTs = ts; if (!lastTs || ts > lastTs) lastTs = ts; }
-    if (!project && o.cwd) {
-      const parts = String(o.cwd).split(/[\\/]/).filter(Boolean);
-      project = parts[parts.length - 1] || null;
+      if (!turn) { turn = { text: '', dollars: 0, steps: 0, startCtx: null, edits: 0 }; turns.push(turn); }
+      const u = o.message.usage;
+      const ctx = (u.input_tokens || 0) + (u.cache_read_input_tokens || 0) + (u.cache_creation_input_tokens || 0);
+      const side = !!o.isSidechain;
+      if (!side && turn.startCtx === null) turn.startCtx = ctx;
+      turn.dollars += c.dollars;
+      turn.steps++;
+
+      r = {
+        dollars: c.dollars, outCost: c.outCost, model: model, ts: ts, side: side, turn: turn, ctx: ctx,
+        afterError: pendingError && !side,     // шаг, где модель разбирается с только что случившейся ошибкой
+        auto: auto && !side,                   // шаг, который запустила фоновая задача, а не человек
+        idle: ts && humanTs ? (ts - humanTs) / 60000 : 0,   // минут с последнего сообщения человека
+        input: u.input_tokens || 0,
+        output: u.output_tokens || 0,
+        thinking: (u.output_tokens_details && u.output_tokens_details.thinking_tokens) || 0,
+        cacheRead: u.cache_read_input_tokens || 0,
+        cacheWrite: u.cache_creation_input_tokens || 0,
+      };
+      if (!side) pendingError = false;
+      requests.push(r);
+      if (id) byId[id] = r;
     }
 
-    const u = o.message.usage;
     const content = o.message.content || [];
     for (let k = 0; k < content.length; k++) {
       const b = content[k];
-      if (b && b.type === 'tool_use' && b.input) {
-        const fp = b.input.file_path || b.input.notebook_path;
-        if (fp && ['Read', 'Edit', 'Write', 'NotebookEdit'].indexOf(b.name) >= 0) {
-          const short = String(fp).split(/[\\/]/).pop();
-          files[short] = (files[short] || 0) + 1;
-        }
+      if (!b || b.type !== 'tool_use' || !b.input) continue;
+      if (b.id) { if (toolById[b.id]) continue; }
+      const edit = EDIT_TOOLS.indexOf(b.name) >= 0;
+      if (b.id) toolById[b.id] = { name: b.name, turn: r.turn, edit: edit };
+      if (edit) r.turn.edits++;
+      if (b.input.run_in_background || BG_TOOLS.indexOf(b.name) >= 0) bg.push(b.input.command || b.input.description || b.name);
+      const fp = b.input.file_path || b.input.notebook_path;
+      if (fp && FILE_TOOLS.indexOf(b.name) >= 0) {
+        const short = String(fp).split(/[\\/]/).pop();
+        files[short] = (files[short] || 0) + 1;
       }
     }
-
-    if (!turn) { turn = { text: '', dollars: 0, steps: 0, startCtx: null }; turns.push(turn); }
-    const ctx = (u.input_tokens || 0) + (u.cache_read_input_tokens || 0) + (u.cache_creation_input_tokens || 0);
-    const side = !!o.isSidechain;
-    if (!side && turn.startCtx === null) turn.startCtx = ctx;
-    turn.dollars += c.dollars;
-    turn.steps++;
-
-    requests.push({
-      dollars: c.dollars, outCost: c.outCost, model: model, ts: ts, side: side, turn: turn, ctx: ctx,
-      input: u.input_tokens || 0,
-      output: u.output_tokens || 0,
-      thinking: (u.output_tokens_details && u.output_tokens_details.thinking_tokens) || 0,
-      cacheRead: u.cache_read_input_tokens || 0,
-      cacheWrite: u.cache_creation_input_tokens || 0,
-    });
   }
 
   let total = 0;
@@ -420,6 +471,7 @@ function parse(text, name) {
   return {
     name: name, requests: requests, files: files, project: project,
     turns: turns.filter(t => t.steps > 0),
+    errors: errors, maxStreak: maxStreak, autoCount: autoCount, bg: bg,
     badLines: badLines, unknownModel: unknownModel, images: images, effort: effort, ttl1h: ttl1h,
     rawCount: rawCount, uniqueCount: requests.length,
     total: total, naive: naive,
@@ -606,6 +658,93 @@ const RULES = [
     };
   },
 
+  function errors(s) {
+    const n = s.errors.length;
+    if (n < 3) return null;
+    let cost = 0;
+    s.requests.forEach(r => { if (r.afterError) cost += r.dollars; });
+    if (cost < 0.05) return null;
+    const share = cost / s.total;
+    const by = {};
+    s.errors.forEach(e => { const k = toolKind(e.tool); by[k] = (by[k] || 0) + 1; });
+    let top = null;
+    for (const k in by) if (!top || by[k] > top[1]) top = [k, by[k]];
+    return {
+      level: share >= 0.15 || s.maxStreak >= 4 ? 'warn' : 'info',
+      title: 'Модель спотыкалась и пробовала снова',
+      headline: plural(n, 'раз', 'раза', 'раз') + ' действие модели закончилось ошибкой, и на исправления ушло ' + money(cost) + '.',
+      short: 'Если модель второй раз спотыкается об одно и то же — остановите её и подскажите.',
+      what: 'За сессию ' + plural(n, 'раз', 'раза', 'раз') + ' действие модели закончилось ошибкой: команда не сработала, файл не нашёлся, инструмент отказал. ' +
+            'Чаще всего ломалось: ' + top[0] + ' (' + plural(top[1], 'раз', 'раза', 'раз') + '). ' +
+            (s.maxStreak >= 3 ? 'Однажды ошибка случилась ' + plural(s.maxStreak, 'раз', 'раза', 'раз') + ' подряд. ' : '') +
+            'Шаги, где модель разбиралась с ошибками, стоили ' + money(cost) + ' — ' + pct(share) + ' сессии.',
+      why: 'Каждая ошибка — это как минимум ещё один шаг: модель читает сообщение об ошибке, думает и пробует снова. И каждый такой шаг заново перечитывает всю переписку. ' +
+           'Если причина в вашем компьютере — не установлена программа, нет доступа, не та папка, — модель может долго биться об неё без толку.',
+      todo: [
+        'Модель второй раз получает ту же ошибку — остановите её (<code>Esc</code> или кнопка остановки) и подскажите, в чём дело. Одна ваша фраза дешевле пяти попыток.',
+        'Запишите в файл <code>CLAUDE.md</code> в папке проекта, как у вас запускаются тесты и сборка. Тогда модель не будет угадывать команды.',
+        'Если дело в компьютере — не установлена программа или нет доступа, — исправьте это сами: модель это не починит.',
+      ],
+    };
+  },
+
+  function noResult(s) {
+    const idle = s.turns.filter(t => t.text && t.edits <= 0 && t.steps >= 8 && t.dollars >= 0.1);
+    if (!idle.length) return null;
+    let cost = 0;
+    idle.forEach(t => cost += t.dollars);
+    if (cost / s.total < 0.2 && cost < 0.5) return null;
+    const top = idle.slice().sort((a, b) => b.dollars - a.dollars)[0];
+    return {
+      level: 'info',
+      title: 'Много работы — ни одного изменённого файла',
+      headline: 'на просьбу «' + clip(top.text, 60) + '» ушло ' + money(top.dollars) + ', но ни один файл так и не изменился.',
+      short: 'Ждёте правок, а модель только читает, — остановите её после 5–6 шагов и спросите, что мешает.',
+      what: (idle.length > 1
+        ? plural(idle.length, 'ваша просьба обошлась', 'ваши просьбы обошлись', 'ваших просьб обошлись') + ' вместе в ' + money(cost) + ', но ни один файл после них не изменился. Самая дорогая — «' + clip(top.text, 90) + '»: '
+        : 'Просьба «' + clip(top.text, 90) + '» обошлась в ' + money(cost) + ', но ни один файл после неё не изменился. На неё ушло ') +
+        plural(top.steps, 'шаг', 'шага', 'шагов') + ' модели.',
+      why: 'Иногда так и задумано: вы просили объяснить, найти или проверить. Тогда всё в порядке — пропустите эту находку. ' +
+           'Но если вы ждали правок, значит модель долго читала, искала и пробовала, а до дела не дошла. Обычно так бывает, когда задача размыта и модели непонятно, с чего начать.',
+      todo: [
+        'Давайте точку входа: имя файла, название функции, текст ошибки. Модель начнёт с дела, а не с поиска по всему проекту.',
+        'Ждёте правок, а модель уже 5–6 шагов только читает, — остановите её и спросите: «Что ты сейчас делаешь и что мешает начать?»',
+        'Для вопросов без правок ставьте рамку: «посмотри только папку cart и ответь в пяти пунктах».',
+      ],
+    };
+  },
+
+  function background(s) {
+    const auto = s.requests.filter(r => r.auto);
+    if (auto.length < 3) return null;
+    let cost = 0;
+    auto.forEach(r => cost += r.dollars);
+    if (cost < 0.05) return null;
+    // «забытые» — шаги, случившиеся, когда человек молчал больше 10 минут: скорее всего, он уже ушёл
+    const tail = auto.filter(r => r.idle >= 10);
+    let tailCost = 0;
+    tail.forEach(r => tailCost += r.dollars);
+    const list = s.bg.slice(0, 3).map(t => '«' + clip(String(t).replace(/\s+/g, ' '), 50) + '»').join(', ') + (s.bg.length > 3 ? ' и ещё ' + (s.bg.length - 3) : '');
+    return {
+      level: tailCost >= 0.1 ? 'warn' : 'info',
+      title: 'Фоновые задачи будили модель без вас',
+      headline: 'модель ' + plural(auto.length, 'раз', 'раза', 'раз') + ' работала без вашей просьбы — по сигналу фоновой задачи, — и это стоило ' + money(cost) + '.',
+      short: 'Закончили работу — попросите модель остановить все фоновые задачи.',
+      what: (s.bg.length ? 'В фоне модель запустила: ' + list + '. ' : '') +
+            'Фоновые задачи ' + plural(s.autoCount, 'раз', 'раза', 'раз') + ' будили модель, и она сделала ' + plural(auto.length, 'шаг', 'шага', 'шагов') + ' без вашей просьбы — на ' + money(cost) + '.' +
+            (tail.length === auto.length ? ' Все они — больше чем через 10 минут после вашего последнего сообщения: скорее всего, вы уже ушли.'
+              : tail.length ? ' Из них ' + plural(tail.length, 'шаг', 'шага', 'шагов') + ' на ' + money(tailCost) + ' — больше чем через 10 минут после вашего последнего сообщения: скорее всего, вы уже ушли.' : ''),
+      why: 'Claude Code умеет запускать долгие дела в фоне: сервер, сборку, помощника. Когда фоновая задача что-то сообщает, модель просыпается и снова перечитывает всю переписку — даже если вы уже ушли. ' +
+           'Забытый сервер или наблюдатель может будить её снова и снова.',
+      todo: [
+        'Закончили — напишите: «Останови все фоновые задачи». Модель сама их найдёт и закроет.',
+        'Уходите надолго — закройте Claude Code: вместе с ним останавливаются и фоновые задачи.',
+      ],
+      saving: tailCost >= 0.05 ? tailCost : 0,
+      savingNote: 'если бы фоновые задачи остановились, когда вы ушли.',
+    };
+  },
+
   function cache(s) {
     let read = 0, fresh = 0;
     s.requests.forEach(r => { read += r.cacheRead; fresh += r.input + r.cacheWrite; });
@@ -640,7 +779,7 @@ const RULES = [
 ];
 
 /* ---------- Что проверяем ----------
-   Десять проверок в трёх группах. У проверок с soon правила пока нет — они в следующем обновлении.
+   Десять проверок в трёх группах. Проверка с soon: true вместо rule показывается как «В следующем обновлении».
    prio — порядок важности: самая важная находка попадает в «Коротко» и открыта сразу. */
 const GROUPS = [
   { id: 'reread', name: 'Что модель перечитывает', about: 'Перед каждым ответом модель заново читает всю переписку. Здесь ищем, что её раздувает.' },
@@ -648,16 +787,16 @@ const GROUPS = [
   { id: 'model',  name: 'Модель и настройки',      about: 'Проверяем, не переплачиваете ли вы за мощность там, где она не нужна.' },
 ];
 const CHECKS = [
-  { n: 1,  group: 'reread', rule: 'growth',       prio: 1, name: 'Длина переписки',            about: 'Не разрослась ли переписка так, что каждое сообщение стоит всё дороже.' },
-  { n: 2,  group: 'reread', rule: 'loop',         prio: 4, name: 'Повторно открытые файлы',    about: 'Не открывала ли модель один и тот же файл снова и снова.' },
-  { n: 3,  group: 'reread', rule: 'screenshots',  prio: 5, name: 'Картинки в переписке',       about: 'Сколько скриншотов попало в переписку и перечитывается с каждым сообщением.' },
-  { n: 4,  group: 'reread', rule: 'cache',        prio: 7, name: 'Скидка на перечитывание',    about: 'Сработала ли скидка на повторное чтение переписки.' },
-  { n: 5,  group: 'task',   rule: 'bigAsk',       prio: 2, name: 'Самая дорогая просьба',      about: 'Не съела ли одна просьба большую часть счёта.' },
-  { n: 6,  group: 'task',   soon: true,                    name: 'Ошибки и повторные попытки', about: 'Сколько стоили круги «ошиблась — попробовала снова — опять ошиблась».' },
-  { n: 7,  group: 'task',   soon: true,                    name: 'Работа без результата',      about: 'Деньги потрачены, а ни один файл так и не изменился.' },
-  { n: 8,  group: 'model',  rule: 'thinking',     prio: 3, name: 'Размышления модели',         about: 'Какая часть оплаченного текста — размышления, которых вы не видите.' },
-  { n: 9,  group: 'model',  rule: 'shortAnswers', prio: 6, name: 'Дорогая модель для мелочей', about: 'Не тратила ли дорогая модель силы на ответы в пару строк.' },
-  { n: 10, group: 'model',  soon: true,                    name: 'Забытые фоновые процессы',   about: 'Помощники, которые продолжали тратить деньги после конца задачи.' },
+  { n: 1,  group: 'reread', rule: 'growth',       prio: 1,  name: 'Длина переписки',            about: 'Не разрослась ли переписка так, что каждое сообщение стоит всё дороже.' },
+  { n: 2,  group: 'reread', rule: 'loop',         prio: 5,  name: 'Повторно открытые файлы',    about: 'Не открывала ли модель один и тот же файл снова и снова.' },
+  { n: 3,  group: 'reread', rule: 'screenshots',  prio: 7,  name: 'Картинки в переписке',       about: 'Сколько скриншотов попало в переписку и перечитывается с каждым сообщением.' },
+  { n: 4,  group: 'reread', rule: 'cache',        prio: 10, name: 'Скидка на перечитывание',    about: 'Сработала ли скидка на повторное чтение переписки.' },
+  { n: 5,  group: 'task',   rule: 'bigAsk',       prio: 2,  name: 'Самая дорогая просьба',      about: 'Не съела ли одна просьба большую часть счёта.' },
+  { n: 6,  group: 'task',   rule: 'errors',       prio: 3,  name: 'Ошибки и повторные попытки', about: 'Сколько стоили круги «ошиблась — попробовала снова — опять ошиблась».' },
+  { n: 7,  group: 'task',   rule: 'noResult',     prio: 9,  name: 'Работа без результата',      about: 'Деньги потрачены, а ни один файл так и не изменился.' },
+  { n: 8,  group: 'model',  rule: 'thinking',     prio: 4,  name: 'Размышления модели',         about: 'Какая часть оплаченного текста — размышления, которых вы не видите.' },
+  { n: 9,  group: 'model',  rule: 'shortAnswers', prio: 8,  name: 'Дорогая модель для мелочей', about: 'Не тратила ли дорогая модель силы на ответы в пару строк.' },
+  { n: 10, group: 'model',  rule: 'background',   prio: 6,  name: 'Забытые фоновые процессы',   about: 'Не будили ли фоновые задачи модель, когда вы уже ушли.' },
 ];
 const RULE = {};
 RULES.forEach(f => RULE[f.name] = f);
@@ -677,6 +816,18 @@ function mainFinding(found) {
   return found.filter(f => f.level !== 'ok' && f.headline).sort((a, b) => a.check.prio - b.check.prio)[0] || null;
 }
 
+/* Имя инструмента из лога — понятными словами. */
+function toolKind(name) {
+  if (name === 'Bash' || name === 'PowerShell') return 'команды в терминале';
+  if (name === 'Read') return 'чтение файлов';
+  if (EDIT_TOOLS.indexOf(name) >= 0) return 'правка файлов';
+  if (name === 'Grep' || name === 'Glob') return 'поиск по файлам';
+  if (name === 'WebFetch' || name === 'WebSearch') return 'поиск в интернете';
+  if (/^mcp__playwright/.test(name)) return 'управление браузером';
+  if (/^mcp__/.test(name)) return 'внешние подключения (MCP)';
+  return name || 'другие действия';
+}
+
 function clip(t, n) { return t.length > n ? t.slice(0, n).replace(/\s+\S*$/, '') + '…' : t; }
 
 /* ---------- Учебный пример: сессия, где всё пошло не так ---------- */
@@ -689,13 +840,18 @@ function makeSampleLog() {
     0:  'Добавь в корзину скидку по промокоду, промокоды лежат в таблице promo',
     9:  'Тесты падают, почини',
     14: 'Сделай то же самое для страницы заказов и заодно проверь всю схему базы, что там с индексами',
+    30: 'Почему заказ со скидкой иногда считается дважды? Разберись',
     38: 'ок, продолжай',
   };
+  const failing = [11, 12, 13, 16, 17];   // тесты падают снова и снова
   let ctx = 24000;
 
-  for (let i = 0; i < 46; i++) {
+  for (let i = 0; i < 49; i++) {
     const at = new Date(t0 + i * 97000).toISOString();
     if (asks[i]) lines.push(JSON.stringify({ type: 'user', timestamp: at, cwd: '/srv/shop-api', message: { role: 'user', content: asks[i] } }));
+    // запущенный в фоне сервер будит модель, когда человек уже ушёл
+    if (i >= 46) lines.push(JSON.stringify({ type: 'user', timestamp: at, origin: { kind: 'task-notification' },
+      message: { role: 'user', content: '<task-notification><task-id>dev</task-id><summary>npm run dev: новый вывод</summary></task-notification>' } }));
     if (i >= 20 && i < 30 && i % 2 === 0) {
       lines.push(JSON.stringify({ type: 'user', timestamp: at, message: { role: 'user', content: [
         { type: 'tool_result', tool_use_id: 't' + i, content: [{ type: 'image', source: { type: 'base64', media_type: 'image/png', data: '' } }] }] } }));
@@ -707,9 +863,18 @@ function makeSampleLog() {
     const think = Math.floor(600 + rnd() * 2400);
     const output = i > 38 ? 60 + Math.floor(rnd() * 90) : think + Math.floor(120 + rnd() * 900);
 
-    const tools = [];
-    if (i % 3 === 0) tools.push({ type: 'tool_use', name: 'Read', input: { file_path: '/srv/shop-api/db/schema.sql' } });
-    else if (i % 5 === 0) tools.push({ type: 'tool_use', name: 'Edit', input: { file_path: '/srv/shop-api/src/orders.ts' } });
+    const tools = [], tid = 'toolu_sample_' + i;
+    let result = null;
+    if (i === 41) tools.push({ type: 'tool_use', id: tid, name: 'Bash', input: { command: 'npm run dev', run_in_background: true } });
+    else if (failing.indexOf(i) >= 0) {
+      tools.push({ type: 'tool_use', id: tid, name: 'Bash', input: { command: 'npm test' } });
+      result = { type: 'tool_result', tool_use_id: tid, is_error: true, content: 'Exit code 1\n3 failing' };
+    } else if (i % 3 === 0) {
+      tools.push({ type: 'tool_use', id: tid, name: 'Read', input: { file_path: '/srv/shop-api/db/schema.sql' } });
+      result = { type: 'tool_result', tool_use_id: tid, content: '…' };
+    } else if (i % 5 === 0 && !(i >= 30 && i < 38)) {
+      tools.push({ type: 'tool_use', id: tid, name: 'Edit', input: { file_path: '/srv/shop-api/src/orders.ts' } });
+    }
 
     lines.push(JSON.stringify({
       type: 'assistant', timestamp: at, cwd: '/srv/shop-api', effort: 'high',
@@ -724,6 +889,7 @@ function makeSampleLog() {
       },
     }));
     if (i % 2 === 0) lines.push(lines[lines.length - 1]);
+    if (result) lines.push(JSON.stringify({ type: 'user', timestamp: at, message: { role: 'user', content: [result] } }));
   }
   return lines.join('\n');
 }
