@@ -4,6 +4,7 @@
   "description": "Explains where the money went in your Claude Code sessions: ten checks, advice, and savings. Runs locally.",
   "private": true,
   "license": "MIT",
+  "author": "Siarhei Khamiakou",
   "bin": {
     "why-so-expensive": "cli.js"
   },
