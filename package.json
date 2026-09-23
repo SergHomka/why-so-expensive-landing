@@ -1,0 +1,24 @@
+{
+  "name": "why-so-expensive",
+  "version": "0.2.0",
+  "description": "Explains where the money went in your Claude Code sessions: ten checks, advice, and savings. Runs locally.",
+  "private": true,
+  "bin": {
+    "why-so-expensive": "cli.js"
+  },
+  "files": [
+    "cli.js",
+    "engine.js",
+    "i18n/"
+  ],
+  "scripts": {
+    "test": "node tests/check.js"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SergHomka/why-so-expensive-landing.git"
+  }
+}
