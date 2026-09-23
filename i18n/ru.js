@@ -432,7 +432,7 @@ const ui = {
 /* ---------- Консольная версия (cli.js) ---------- */
 const cli = {
   title: 'Why So Expensive — разбор логов Claude Code',
-  scope: (dir, days) => 'Папка: ' + dir + (days ? ' · за последние ' + plural(days, 'день', 'дня', 'дней') : ' · за всё время'),
+  scope: (dir, days) => 'Папка: ' + dir + (days === 1 ? ' · за последний день' : days ? ' · за последние ' + plural(days, 'день', 'дня', 'дней') : ' · за всё время'),
   noFolder: dir => 'Не нашли папку ' + dir + '.\nУкажите папку с логами: npx github:SergHomka/why-so-expensive-landing <папка>',
   noSessions: days => 'За ' + (days ? 'последние ' + plural(days, 'день', 'дня', 'дней') : 'всё время') + ' сессий с расходом нет.' + (days ? ' Попробуйте --days 30 или --all.' : ''),
   total: a => money(a.total) + ' — ' + plural(a.sessions, 'сессия', 'сессии', 'сессий') + ', ' + nSteps(a.steps) + ' модели',

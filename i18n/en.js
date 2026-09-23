@@ -426,7 +426,7 @@ const ui = {
 /* ---------- Command-line version (cli.js) ---------- */
 const cli = {
   title: 'Why So Expensive — Claude Code log analysis',
-  scope: (dir, days) => 'Folder: ' + dir + (days ? ' · last ' + plural(days, 'day', 'days') : ' · all time'),
+  scope: (dir, days) => 'Folder: ' + dir + (days === 1 ? ' · last day' : days ? ' · last ' + days + ' days' : ' · all time'),
   noFolder: dir => 'Folder not found: ' + dir + '.\nPass the log folder: npx github:SergHomka/why-so-expensive-landing <folder>',
   noSessions: days => 'No sessions with usage ' + (days ? 'in the last ' + plural(days, 'day', 'days') : 'at all') + '.' + (days ? ' Try --days 30 or --all.' : ''),
   total: a => money(a.total) + ' — ' + plural(a.sessions, 'session', 'sessions') + ', ' + plural(a.steps, 'model step', 'model steps'),
