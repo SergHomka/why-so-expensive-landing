@@ -135,6 +135,30 @@
     color: var(--accent); background: none; border: 1px solid var(--line); border-radius: 10px; padding: 6px 14px;
   }
   .toggle-all:hover { border-color: var(--accent); }
+  details.finding { scroll-margin-top: 12px; }
+  .glabel { font-size: 0.78rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 22px 0 10px; }
+
+  /* Список всех проверок */
+  .checks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 14px 0 30px; }
+  .cgroup { border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; background: var(--bg-soft); }
+  .cgroup h3 { margin-bottom: 4px; }
+  .cgroup > p { margin: 0 0 10px; }
+  .cgroup ul { list-style: none; margin: 0; padding: 0; }
+  .cgroup li { display: flex; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line); }
+  .cgroup .ic { flex: none; width: 1.4em; height: 1.4em; border-radius: 50%; font-size: 0.8rem; font-weight: 800;
+    display: flex; align-items: center; justify-content: center; margin-top: 2px; border: 1.5px solid currentColor; }
+  .cgroup .num { color: var(--muted); font-size: 0.9rem; }
+  .cgroup .nm { font-weight: 700; }
+  .cgroup a.nm { color: var(--text); text-decoration: underline; text-decoration-color: var(--accent); text-underline-offset: 3px; }
+  .cgroup a.nm:hover { color: var(--accent); }
+  .cgroup .st { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; margin-top: 2px; }
+  .cgroup .ds { font-size: 0.85rem; color: var(--muted); margin-top: 2px; line-height: 1.45; }
+  .c-warn .ic, .c-warn .st { color: var(--warn); }
+  .c-info .ic, .c-info .st { color: var(--info); }
+  .c-ok .ic, .c-ok .st, .c-none .ic, .c-none .st { color: var(--ok); }
+  .c-soon .ic, .c-soon .st, .c-soon .nm { color: var(--muted); }
+  .c-soon .ic { border-style: dashed; }
+  @media (max-width: 780px) { .checks { grid-template-columns: 1fr; } }
   .finding .saving { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 0.95rem; }
 
   .summary {
@@ -615,14 +639,42 @@ const RULES = [
   },
 ];
 
+/* ---------- Что проверяем ----------
+   Десять проверок в трёх группах. У проверок с soon правила пока нет — они в следующем обновлении.
+   prio — порядок важности: самая важная находка попадает в «Коротко» и открыта сразу. */
+const GROUPS = [
+  { id: 'reread', name: 'Что модель перечитывает', about: 'Перед каждым ответом модель заново читает всю переписку. Здесь ищем, что её раздувает.' },
+  { id: 'task',   name: 'Как поставлена задача',   about: 'Ищем просьбы, на которые ушло больше всего шагов и денег.' },
+  { id: 'model',  name: 'Модель и настройки',      about: 'Проверяем, не переплачиваете ли вы за мощность там, где она не нужна.' },
+];
+const CHECKS = [
+  { n: 1,  group: 'reread', rule: 'growth',       prio: 1, name: 'Длина переписки',            about: 'Не разрослась ли переписка так, что каждое сообщение стоит всё дороже.' },
+  { n: 2,  group: 'reread', rule: 'loop',         prio: 4, name: 'Повторно открытые файлы',    about: 'Не открывала ли модель один и тот же файл снова и снова.' },
+  { n: 3,  group: 'reread', rule: 'screenshots',  prio: 5, name: 'Картинки в переписке',       about: 'Сколько скриншотов попало в переписку и перечитывается с каждым сообщением.' },
+  { n: 4,  group: 'reread', rule: 'cache',        prio: 7, name: 'Скидка на перечитывание',    about: 'Сработала ли скидка на повторное чтение переписки.' },
+  { n: 5,  group: 'task',   rule: 'bigAsk',       prio: 2, name: 'Самая дорогая просьба',      about: 'Не съела ли одна просьба большую часть счёта.' },
+  { n: 6,  group: 'task',   soon: true,                    name: 'Ошибки и повторные попытки', about: 'Сколько стоили круги «ошиблась — попробовала снова — опять ошиблась».' },
+  { n: 7,  group: 'task',   soon: true,                    name: 'Работа без результата',      about: 'Деньги потрачены, а ни один файл так и не изменился.' },
+  { n: 8,  group: 'model',  rule: 'thinking',     prio: 3, name: 'Размышления модели',         about: 'Какая часть оплаченного текста — размышления, которых вы не видите.' },
+  { n: 9,  group: 'model',  rule: 'shortAnswers', prio: 6, name: 'Дорогая модель для мелочей', about: 'Не тратила ли дорогая модель силы на ответы в пару строк.' },
+  { n: 10, group: 'model',  soon: true,                    name: 'Забытые фоновые процессы',   about: 'Помощники, которые продолжали тратить деньги после конца задачи.' },
+];
+const RULE = {};
+RULES.forEach(f => RULE[f.name] = f);
+
+/* Результат по каждой из десяти проверок: { check, finding } — finding пустой, если проблем нет. */
 function diagnose(s) {
-  const out = [];
-  for (let i = 0; i < RULES.length; i++) {
-    let r = null;
-    try { r = RULES[i](s); } catch (e) { r = null; }
-    if (r) out.push(r);
-  }
-  return out;
+  return CHECKS.map(c => {
+    let f = null;
+    if (c.rule) { try { f = RULE[c.rule](s); } catch (e) { f = null; } }
+    if (f) f.check = c;
+    return { check: c, finding: f };
+  });
+}
+
+/* Главная находка — самая важная из проблем, у которой есть фраза для «Коротко». */
+function mainFinding(found) {
+  return found.filter(f => f.level !== 'ok' && f.headline).sort((a, b) => a.check.prio - b.check.prio)[0] || null;
 }
 
 function clip(t, n) { return t.length > n ? t.slice(0, n).replace(/\s+\S*$/, '') + '…' : t; }
@@ -690,7 +742,7 @@ function show(html) {
 }
 
 function renderSummary(s, found) {
-  const top = found.filter(f => f.level !== 'ok' && f.headline)[0];
+  const top = mainFinding(found);
   let html = '<div class="summary"><span class="tag">Коротко</span><p>';
   html += 'Эта сессия стоила <b>' + money(s.total) + '</b>' +
     (s.turns.length ? ': ' + plural(s.turns.length, 'ваша просьба', 'ваши просьбы', 'ваших просьб') + ', ' : ', ') +
@@ -726,8 +778,8 @@ function renderFinding(f, open) {
   const teaser = f.headline
     ? f.headline.charAt(0).toUpperCase() + f.headline.slice(1)
     : f.what.split('. ')[0].replace(/\.?$/, '.');     // первое предложение
-  let html = '<details class="finding ' + f.level + '"' + (open ? ' open' : '') + '><summary>' +
-    '<span class="tag">' + names[f.level] + '</span>' +
+  let html = '<details class="finding ' + f.level + '" id="check-' + f.check.n + '"' + (open ? ' open' : '') + '><summary>' +
+    '<span class="tag">Проверка ' + f.check.n + ' · ' + names[f.level] + '</span>' +
     (f.saving ? '<span class="badge">экономия до ' + money(f.saving) + '</span>' : '') +
     '<h3>' + esc(f.title) + '</h3>' +
     '<p class="teaser">' + safe(teaser) + '</p>' +
@@ -756,15 +808,44 @@ function renderTech(s) {
   return '<details class="tech"><summary>Подробности для любопытных</summary><ul>' + li + '</ul></details>';
 }
 
+/* Все десять проверок одним списком: что проверяли и чем кончилось. */
+function renderChecklist(results) {
+  const st = {
+    warn: ['!', 'Проблема'], info: ['●', 'Обратите внимание'], ok: ['✓', 'Всё хорошо'],
+    none: ['✓', 'Проблем нет'], soon: ['○', 'В следующем обновлении'],
+  };
+  let html = '<h2>Что мы проверили</h2>' +
+    '<p class="small muted">Сессию проверяем по десяти пунктам в трёх группах. У каждого пункта — своя причина, по которой счёт растёт незаметно. ' +
+    'Нажмите на пункт с находкой, чтобы открыть подробности.</p><div class="checks">';
+  GROUPS.forEach(g => {
+    html += '<div class="cgroup"><h3>' + g.name + '</h3><p class="small muted">' + g.about + '</p><ul>';
+    results.filter(r => r.check.group === g.id).forEach(r => {
+      const c = r.check, k = c.soon ? 'soon' : r.finding ? r.finding.level : 'none';
+      const name = r.finding ? '<a class="nm" href="#check-' + c.n + '">' + c.name + '</a>' : '<span class="nm">' + c.name + '</span>';
+      html += '<li class="c-' + k + '"><span class="ic" aria-hidden="true">' + st[k][0] + '</span><div>' +
+        '<span class="num">' + c.n + '.</span> ' + name + '<div class="st">' + st[k][1] + '</div>' +
+        '<div class="ds">' + c.about + '</div></div></li>';
+    });
+    html += '</ul></div>';
+  });
+  return html + '</div>';
+}
+
 function renderSession(s) {
-  const found = diagnose(s);
-  let html = renderSummary(s, found) + renderPrompts(s);
+  const results = diagnose(s);
+  const found = results.filter(r => r.finding).map(r => r.finding);
+  let html = renderSummary(s, found) + renderChecklist(results) + renderPrompts(s);
   if (found.length) {
-    // открыта только первая проблема — остальное по нажатию
-    const first = found.findIndex(f => f.level !== 'ok');
+    // открыта только главная проблема — остальное по нажатию
+    const top = mainFinding(found);
     html += '<div class="found-head"><h2>Что нашли и что с этим делать</h2>' +
       (found.length > 1 ? '<button type="button" class="toggle-all">Развернуть все</button>' : '') + '</div>';
-    found.forEach((f, i) => html += renderFinding(f, i === first || found.length === 1));
+    GROUPS.forEach(g => {
+      const fs = found.filter(f => f.check.group === g.id);
+      if (!fs.length) return;
+      html += '<div class="glabel">' + g.name + '</div>';
+      fs.forEach(f => html += renderFinding(f, f === top || found.length === 1));
+    });
   } else {
     html += '<div class="finding info"><span class="tag">Ничего не сработало</span>' +
       '<p>Явных проблем в этой сессии не нашли — так тоже бывает, и это честный ответ.</p></div>';
@@ -865,6 +946,16 @@ function syncToggle() {
   const allOpen = Array.prototype.every.call(cards, d => d.open);
   btn.textContent = allOpen ? 'Свернуть все' : 'Развернуть все';
 }
+// пункт из «Что мы проверили»: открыть карточку и прокрутить к ней
+result.addEventListener('click', e => {
+  const a = e.target.closest && e.target.closest('a[href^="#check-"]');
+  if (!a) return;
+  const card = document.getElementById(a.getAttribute('href').slice(1));
+  if (!card) return;
+  e.preventDefault();
+  card.open = true;
+  card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
 result.addEventListener('click', e => {
   const btn = e.target.closest && e.target.closest('.toggle-all');
   if (!btn) return;
