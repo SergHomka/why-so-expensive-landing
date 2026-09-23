@@ -119,6 +119,7 @@
   details.finding[open] .teaser { display: none; }
   details.finding .more { display: inline-block; margin-top: 8px; font-size: 0.9rem; font-weight: 600; color: var(--accent); }
   details.finding .more::after { content: 'Details and what to do ▾'; }
+  details.finding.ok .more::after { content: 'Details and tips ▾'; }
   details.finding[open] .more::after { content: 'Collapse ▴'; }
   details.finding[open] > summary { margin-bottom: 2px; }
   details.finding > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 4px; }
@@ -746,12 +747,15 @@ const RULES = [
     const ttl = s.ttl1h ? 'an hour' : 'five minutes';
     if (share >= 0.7) {
       return {
-        level: 'ok',
+        level: 'ok', calm: true,
         title: 'The rereading discount works',
         headline: '',
         what: pct(share) + ' of the reread conversation came at a 10× discount. Without it, the session would have cost about ' + money(read * p.in * 0.9 / 1e6) + ' more.',
         why: 'Claude Code remembers the conversation it has already read, and rereading it costs ten times less. The discount holds as long as you don\'t take long breaks.',
-        todo: ['Nothing to do — Claude Code handles this on its own.'],
+        todo: [
+          'Nothing to do right now — Claude Code handles this on its own.',
+          'To keep it that way: coming back to a long conversation after a long break, run <code>/compact</code> first; switching to a different task, use <code>/clear</code>.',
+        ],
       };
     }
     return {
@@ -793,12 +797,147 @@ const CHECKS = [
 const RULE = {};
 RULES.forEach(f => RULE[f.name] = f);
 
-/* A result for each of the ten checks: { check, finding } — finding is empty when there's no problem. */
+/* "All good" cards: what we saw in this session, why the point matters at all,
+   and how to avoid problems in the future. Shown when a rule finds nothing. */
+const CALM = {
+  growth: {
+    title: 'The conversation didn\'t grow too much',
+    what(s) {
+      const main = s.requests.filter(r => !r.side && r.ctx > 0);
+      if (main.length < 2) return 'The session was too short for the conversation to grow.';
+      let max = 0; main.forEach(r => { if (r.ctx > max) max = r.ctx; });
+      return 'At the start the model reread ' + pages(main[0].ctx) + ' per message; by the end, ' + pages(max) + '. Over ' +
+        plural(main.length, 'step', 'steps') + ' the conversation didn\'t grow much, and messages didn\'t get noticeably more expensive.';
+    },
+    why: 'Before every answer the model rereads the whole conversation from the start. While it\'s short, that\'s cheap. Once it grows, every next message costs more.',
+    todo: [
+      'One task, one conversation: done with a task — type <code>/clear</code>.',
+      'The task is big and the conversation is already long — type <code>/compact</code>: Claude Code condenses it into a short summary.',
+    ],
+  },
+  loop: {
+    title: 'Files weren\'t reopened in circles',
+    what(s) {
+      let top = null;
+      for (const k in s.files) if (!top || s.files[k] > top[1]) top = [k, s.files[k]];
+      if (!top) return 'The model didn\'t open any file more than once.';
+      return 'The file the model opened most was ' + top[0] + ' — ' + plural(top[1], 'time', 'times') + '. That\'s normal.';
+    },
+    why: 'Every time the model opens a file, the whole file is added to the conversation and reread with every message after that. A file opened five times is paid for five times.',
+    todo: [
+      'If you notice the model opening the same file again, say: "You\'ve already read it, don\'t open it again."',
+      'Only need part of a big file? Say which part: "only look at the payment function".',
+    ],
+  },
+  screenshots: {
+    title: 'Few images',
+    what(s) {
+      return s.images ? 'Images in the conversation: ' + s.images + ' — that\'s not many.' : 'There were no images in the conversation.';
+    },
+    why: 'To the model, an image is like several pages of text. And it stays in the conversation until the end: every following message "looks" at all the past screenshots again.',
+    todo: [
+      'To check the text on a page, ask the model to read the page text instead of taking a screenshot.',
+      'After a series of screenshots, once the task is done, use <code>/clear</code>.',
+    ],
+  },
+  cache: {
+    title: 'Rereading discount — nothing to flag',
+    what(s) {
+      return 'The session had ' + plural(s.requests.length, 'step', 'steps') + ' — too few for the rereading discount to noticeably affect the bill.';
+    },
+    why: 'Claude Code remembers the conversation it has read, and rereading it costs ten times less. But that memory doesn\'t last long: after a long break the whole conversation is read again at full price.',
+    todo: [
+      'Coming back to a long conversation after a break? Run <code>/compact</code> first: you\'ll pay full price for a short summary instead of the whole history.',
+      'Coming back to a different task — use <code>/clear</code>.',
+    ],
+  },
+  bigAsk: {
+    title: 'No single request ate the bill',
+    what(s) {
+      if (s.turns.length < 2) return 'The session had a single request — nothing to compare it with.';
+      let top = 0; s.turns.forEach(t => { if (t.dollars > top) top = t.dollars; });
+      return 'The most expensive request took ' + pct(top / s.total) + ' of the session — the money was spread evenly across requests.';
+    },
+    why: 'Every model step is a separate call: read, check, fix. And every step rereads the whole conversation. A vague task turns into dozens of extra steps.',
+    todo: [
+      'Hand over big tasks in parts: "first do X", check it, then "now do Y".',
+      'Be specific: which file, what to change, how to tell it\'s done.',
+    ],
+  },
+  errors: {
+    title: 'The model didn\'t stumble',
+    what(s) {
+      const n = s.errors.length;
+      return n ? 'There ' + (n === 1 ? 'was 1 error' : 'were ' + n + ' errors') + '; the model dealt with them quickly, and they didn\'t cost much.' : 'None of the model\'s actions ended in an error.';
+    },
+    why: 'Every error means at least one more step: the model reads the error, thinks, and tries again. If the cause is on your machine — a missing program, no access — the model can keep hitting it for a long time.',
+    todo: [
+      'The model gets the same error a second time? Stop it (<code>Esc</code> or the stop button) and tell it what\'s wrong.',
+      'Write down in <code>CLAUDE.md</code> in the project folder how your tests and build are run.',
+    ],
+  },
+  noResult: {
+    title: 'The work produced results',
+    what() { return 'We found no expensive requests after which not a single file changed.'; },
+    why: 'When a task is vague, the model reads, searches, and tries for a long time without getting to the edits — and you pay for the searching.',
+    todo: [
+      'Give it an entry point: a file name, a function name, the error text.',
+      'Expecting edits, and the model has only been reading for 5–6 steps? Stop it and ask what\'s in the way.',
+    ],
+  },
+  thinking: {
+    title: 'A reasonable amount of thinking',
+    what(s) {
+      let out = 0, th = 0;
+      s.requests.forEach(r => { out += r.output; th += r.thinking; });
+      if (out && !th) return 'The model answered directly, with no hidden reasoning.';
+      return out ? 'The model\'s reasoning was ' + pct(th / out) + ' of the text you paid for. That\'s within the normal range.' : 'The model wrote almost nothing.';
+    },
+    why: 'Before answering, the model writes a draft "to itself", billed at the output price — the most expensive kind of text. On hard tasks the draft pays off; on simple ones it doesn\'t.',
+    todo: [
+      'For simple tasks, start Claude Code like this: <code>claude --effort low</code>.',
+      'For hard tasks (a new feature, a tricky bug) keep the normal effort level.',
+    ],
+  },
+  shortAnswers: {
+    title: 'Short answers were cheap',
+    what() { return 'There were almost no short answers on top of a long conversation.'; },
+    why: 'A short answer costs almost as much as a long one: most of the price isn\'t the answer itself but rereading the whole conversation before it.',
+    todo: [
+      'For small questions, switch to a cheaper model: <code>/model</code> → Haiku.',
+      'Ask a question unrelated to the current task in a new window — the conversation there is empty.',
+    ],
+  },
+  background: {
+    title: 'Background tasks didn\'t cost money',
+    what(s) {
+      if (s.autoCount) return 'Background tasks did wake the model, but it didn\'t cost much.';
+      if (s.bg.length) return 'The model started tasks in the background, but they didn\'t wake it without you.';
+      return 'There were no background tasks in this session.';
+    },
+    why: 'Claude Code can run long jobs in the background: a server, a build, a helper. When a background task reports something, the model wakes up and rereads the whole conversation — even if you\'re gone.',
+    todo: [
+      'When you\'re done, write: "Stop all background tasks."',
+      'Leaving for a long time? Close Claude Code: background tasks stop along with it.',
+    ],
+  },
+};
+
+function calmCard(c, s) {
+  const k = CALM[c.rule];
+  return { level: 'ok', calm: true, title: k.title, headline: '', what: k.what(s), why: k.why, todo: k.todo, check: c };
+}
+
+/* A result for each of the ten checks: { check, finding }. When a rule finds nothing,
+   the finding is an "all good" card with tips for the future. */
 function diagnose(s) {
   return CHECKS.map(c => {
     let f = null;
-    if (c.rule) { try { f = RULE[c.rule](s); } catch (e) { f = null; } }
-    if (f) f.check = c;
+    if (c.rule) {
+      try { f = RULE[c.rule](s); } catch (e) { f = null; }
+      if (f) f.check = c;
+      else if (CALM[c.rule]) { try { f = calmCard(c, s); } catch (e) { f = null; } }
+    }
     return { check: c, finding: f };
   });
 }
@@ -942,9 +1081,9 @@ function renderFinding(f, open) {
     '<h3>' + esc(f.title) + '</h3>' +
     '<p class="teaser">' + safe(teaser) + '</p>' +
     '<span class="more"></span></summary>' +
-    '<div class="part"><div class="lbl">What happened</div><p>' + safe(f.what) + '</p></div>' +
-    '<div class="part"><div class="lbl">Why it costs money</div><p>' + safe(f.why) + '</p></div>' +
-    '<div class="part"><div class="lbl">What to do</div><ul>';
+    '<div class="part"><div class="lbl">' + (f.calm ? 'What we saw' : 'What happened') + '</div><p>' + safe(f.what) + '</p></div>' +
+    '<div class="part"><div class="lbl">' + (f.calm ? 'Why it\'s worth watching' : 'Why it costs money') + '</div><p>' + safe(f.why) + '</p></div>' +
+    '<div class="part"><div class="lbl">' + (f.calm ? 'How to keep it that way' : 'What to do') + '</div><ul>';
   f.todo.forEach(t => html += '<li>' + safe(t) + '</li>');
   html += '</ul>';
   if (f.saving) html += '<p class="saving">Estimated savings: up to <b>' + money(f.saving) + '</b>, ' + esc(f.savingNote) + '</p>';
@@ -974,7 +1113,7 @@ function renderChecklist(results) {
   };
   let html = '<h2>What we checked</h2>' +
     '<p class="small muted">We check the session on ten points in three groups. Each point is its own way for the bill to grow unnoticed. ' +
-    'Click a point with a finding to open the details.</p><div class="checks">';
+    'Click a point to open the details and tips.</p><div class="checks">';
   GROUPS.forEach(g => {
     html += '<div class="cgroup"><h3>' + g.name + '</h3><p class="small muted">' + g.about + '</p><ul>';
     results.filter(r => r.check.group === g.id).forEach(r => {
@@ -994,9 +1133,9 @@ function renderSession(s) {
   const found = results.filter(r => r.finding).map(r => r.finding);
   let html = renderSummary(s, found) + renderChecklist(results) + renderPrompts(s);
   if (found.length) {
-    // only the main problem starts open — the rest on click
+    // only the main problem starts open — the rest, including "all good" cards, on click
     const top = mainFinding(found);
-    html += '<div class="found-head"><h2>What we found and what to do</h2>' +
+    html += '<div class="found-head"><h2>Each check in detail</h2>' +
       (found.length > 1 ? '<button type="button" class="toggle-all">Expand all</button>' : '') + '</div>';
     GROUPS.forEach(g => {
       const fs = found.filter(f => f.check.group === g.id);

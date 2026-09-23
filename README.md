@@ -24,7 +24,7 @@
 - **Коротко** — во что обошлась сессия и главная причина одной фразой.
 - **Что мы проверили** — все десять проверок со статусом: проблема, обратите внимание, всё хорошо.
 - **Во что обошлись ваши просьбы** — самые дорогие ваши сообщения с ценой каждого.
-- **Что нашли и что с этим делать** — по каждой находке: что произошло, почему это стоит денег, что сделать и сколько можно сэкономить. Написано простым языком, без терминов.
+- **Разбор по каждой проверке** — карточка на каждый из десяти пунктов. Если есть проблема: что произошло, почему это стоит денег, что сделать и сколько можно сэкономить. Если всё хорошо: что увидели и как не допустить проблем в будущем. Написано простым языком, без терминов.
 
 ## Десять проверок
 
@@ -96,7 +96,7 @@ Work in progress. The Claude Code demo works today; Codex, OpenRouter, and Curso
 - **In short** — what the session cost and the main cause in one sentence.
 - **What we checked** — all ten checks with a status: problem, worth a look, all good.
 - **What your requests cost** — your most expensive messages with the price of each.
-- **What we found and what to do** — for each finding: what happened, why it costs money, what to do, and how much you could save. Plain language, no jargon.
+- **Each check in detail** — a card for every one of the ten points. If there's a problem: what happened, why it costs money, what to do, and how much you could save. If all is good: what we saw and how to keep it that way. Plain language, no jargon.
 
 ## Ten checks
 
