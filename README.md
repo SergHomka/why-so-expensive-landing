@@ -8,7 +8,7 @@
 - **Демо — разбор в браузере:** https://serghomka.github.io/why-so-expensive-landing/demo.html
 - **В терминале, по всем сессиям сразу:** `npx github:SergHomka/why-so-expensive-landing`
 
-Проект в разработке. Сейчас работает Claude Code; Codex, OpenRouter и Cursor — следующие.
+Проект в разработке. Сейчас работает Claude Code; Codex, OpenRouter и Cursor — в следующих обновлениях.
 
 ## Два способа попробовать
 
@@ -20,7 +20,7 @@
    - macOS и Linux: `~/.claude/projects/` (папка скрытая: в окне выбора нажмите `Cmd+Shift+G` и вставьте путь)
 3. Нет файла под рукой — нажмите «Нет файла — показать на примере».
 
-**Файл не покидает браузер.** Разбор идёт прямо во вкладке, страница не отправляет ваши данные никуда. Можно отключить интернет и убедиться.
+**Файл не покидает браузер.** Разбор идёт прямо во вкладке и работает даже без интернета — можно отключить его и убедиться. Страница считает только посещения и нажатия кнопок (счётчик [GoatCounter](https://www.goatcounter.com/), без cookies) — без сумм, текстов и имён файлов.
 
 ### В терминале
 
@@ -107,6 +107,10 @@ node tests/check.js --local   # плюс все ваши логи из ~/.claude
 3. OpenRouter
 4. Cursor
 
+## Лицензия
+
+MIT — см. [LICENSE](LICENSE). Код можно брать, менять и использовать, в том числе в коммерческих проектах.
+
 ## Связаться
 
 Узнали свой счёт, хотите попробовать раньше других или есть идея для проверки — пишите: Telegram [@doyrden](https://t.me/doyrden) или [issue на GitHub](https://github.com/SergHomka/why-so-expensive-landing/issues/new).
@@ -123,7 +127,7 @@ Your Claude Code bill came in and you have no idea what you paid for. Or you're 
 - **Demo — analysis in your browser:** https://serghomka.github.io/why-so-expensive-landing/en/demo.html
 - **In the terminal, all sessions at once:** `npx github:SergHomka/why-so-expensive-landing`
 
-Work in progress. Claude Code works today; Codex, OpenRouter, and Cursor come next.
+Work in progress. Claude Code works today; Codex, OpenRouter, and Cursor come in later updates.
 
 ## Two ways to try it
 
@@ -135,7 +139,7 @@ Work in progress. Claude Code works today; Codex, OpenRouter, and Cursor come ne
    - macOS and Linux: `~/.claude/projects/` (the folder is hidden: in the file dialog press `Cmd+Shift+G` and paste the path)
 3. No file at hand? Click "No file? Show me an example".
 
-**Your file never leaves the browser.** The analysis runs right in the tab, and the page doesn't send your data anywhere. You can turn off the internet and check.
+**Your file never leaves the browser.** The analysis runs right in the tab and works even offline — you can turn off the internet and check. The page only counts visits and button clicks ([GoatCounter](https://www.goatcounter.com/), no cookies) — no amounts, no text, no file names.
 
 ### In the terminal
 
@@ -221,6 +225,10 @@ node tests/check.js --local   # plus all your logs from ~/.claude/projects (noth
 2. Codex
 3. OpenRouter
 4. Cursor
+
+## License
+
+MIT — see [LICENSE](LICENSE). You can use, change, and reuse the code, including in commercial projects.
 
 ## Contact
 

@@ -16,6 +16,13 @@ function show(html) {
   result.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
+/* Счётчик GoatCounter: отправляем только название действия («открыли пример», «загрузили файл»).
+   Ни сумм, ни текстов, ни имён файлов. Если счётчик не загрузился (блокировщик, нет сети) — ничего не происходит. */
+function track(name) {
+  try { if (self.goatcounter && self.goatcounter.count) self.goatcounter.count({ path: T.lang + '-' + name, title: name, event: true }); }
+  catch (e) { /* счётчик не должен мешать разбору */ }
+}
+
 const diagnose = s => E.diagnose(s, T);
 const mainFinding = E.mainFinding;
 
@@ -206,6 +213,7 @@ function readFiles(fileList, fromFolder) {
   if (!files.length) { if (fromFolder) show('<div class="error">' + U.noJsonl + '</div>'); return; }
   files.sort((a, b) => (b.lastModified || 0) - (a.lastModified || 0));
   files = files.slice(0, MAX_FILES);
+  track(fromFolder ? 'demo-folder' : files.length > 1 ? 'demo-files' : 'demo-file');
   show('<p class="lead" id="progress">' + U.reading(files.length) + '</p>');
 
   const sessions = [];
@@ -274,7 +282,7 @@ $('file').addEventListener('change', e => {
   readFiles(e.target.files);
   e.target.value = '';                     // иначе повторный выбор того же файла не сработает
 });
-$('sampleBtn').addEventListener('click', () => render([E.parse(E.makeSampleLog(T), T.sample.name)], true));
+$('sampleBtn').addEventListener('click', () => { track('demo-sample'); render([E.parse(E.makeSampleLog(T), T.sample.name)], true); });
 
 // выбор папки целиком — только там, где браузер это умеет (на телефонах логов всё равно нет)
 const dirInput = $('dir');
@@ -291,6 +299,7 @@ dirInput.addEventListener('change', e => {
 result.addEventListener('click', e => {
   const btn = e.target.closest && e.target.closest('.copy');
   if (!btn) return;
+  track('demo-copy');
   copyText(btn.getAttribute('data-text'), () => {
     btn.textContent = U.copied;
     setTimeout(() => { btn.textContent = U.copy; }, 2000);

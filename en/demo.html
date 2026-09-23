@@ -8,6 +8,17 @@
 <meta name="description" content="Drop in a Claude Code session file to see what it cost and where the money leaked. The file never leaves your browser.">
 <link rel="alternate" hreflang="ru" href="https://serghomka.github.io/why-so-expensive-landing/demo.html">
 <link rel="alternate" hreflang="en" href="https://serghomka.github.io/why-so-expensive-landing/en/demo.html">
+<meta property="og:type" content="website">
+<meta property="og:title" content="What did your Claude Code session cost?">
+<meta property="og:description" content="Drop in a session file to see where the money leaked and what to do. The analysis runs in your browser; the file never leaves it.">
+<meta property="og:url" content="https://serghomka.github.io/why-so-expensive-landing/en/demo.html">
+<meta property="og:image" content="https://serghomka.github.io/why-so-expensive-landing/og-en.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<!-- счётчик посещений GoatCounter: без cookies, без данных из ваших файлов -->
+<script data-goatcounter="https://whysoexpensive.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
 <link rel="stylesheet" href="../demo.css">
 <style>
   details.finding .more::after { content: 'Details and what to do ▾'; }
@@ -45,7 +56,7 @@
     <input type="file" id="dir" webkitdirectory multiple hidden>
     <p class="small muted" id="dirNote" style="margin:14px 0 0">Choosing a folder? Your browser will ask whether to "upload" the files to this site — that's its standard wording. The files still stay in this tab.</p>
     <div class="privacy">
-      <span>🔒</span><span><b>Your file never leaves the browser.</b> This page makes no network requests — you can turn off the internet and check.</span>
+      <span>🔒</span><span><b>Your file never leaves the browser.</b> The analysis runs right in this tab and works even offline — you can turn off the internet and check. The page only counts visits and button clicks: no cookies and no data from your file.</span>
     </div>
   </div>
 
@@ -76,7 +87,7 @@
 
 <footer>
   <div class="wrap">
-    Costs are based on Anthropic's public prices. The analysis runs locally; no data is sent anywhere.
+    Costs are based on Anthropic's public prices. The analysis runs locally; no data from your files is sent anywhere.
     Author: <a href="https://t.me/doyrden" target="_blank" rel="noopener">@doyrden</a>,
     <a href="https://github.com/SergHomka" target="_blank" rel="noopener">GitHub</a>.
   </div>

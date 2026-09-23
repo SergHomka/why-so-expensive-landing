@@ -3,13 +3,15 @@
   "version": "0.2.0",
   "description": "Explains where the money went in your Claude Code sessions: ten checks, advice, and savings. Runs locally.",
   "private": true,
+  "license": "MIT",
   "bin": {
     "why-so-expensive": "cli.js"
   },
   "files": [
     "cli.js",
     "engine.js",
-    "i18n/"
+    "i18n/",
+    "LICENSE"
   ],
   "scripts": {
     "test": "node tests/check.js"

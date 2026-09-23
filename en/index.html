@@ -8,6 +8,17 @@
 <meta name="description" content="Cost diagnosis for Claude Code, Codex, Cursor and OpenRouter: not how much, but why so much and what to do about it.">
 <link rel="alternate" hreflang="ru" href="https://serghomka.github.io/why-so-expensive-landing/">
 <link rel="alternate" hreflang="en" href="https://serghomka.github.io/why-so-expensive-landing/en/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Why is my AI so expensive">
+<meta property="og:description" content="Not "how much you spent on Claude Code" but "why it cost that much and what to do". Ten checks, analysis right in your browser.">
+<meta property="og:url" content="https://serghomka.github.io/why-so-expensive-landing/en/">
+<meta property="og:image" content="https://serghomka.github.io/why-so-expensive-landing/og-en.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<!-- счётчик посещений GoatCounter: без cookies, без данных из ваших файлов -->
+<script data-goatcounter="https://whysoexpensive.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
 <style>
   :root {
     --bg: #ffffff;
@@ -212,7 +223,7 @@
     <h1>Your AI bill came in, and you have <span class="accent">no idea why.</span> We'll explain.</h1>
     <p class="lead">Not "how much you spent" but "why it cost that much and what to do about it". We read the local logs of your AI tools and name the specific cause, with a dollar amount and a fix.</p>
     <div class="actions">
-      <a class="btn" href="demo.html">Drop in your log — answer in 10 seconds</a>
+      <a class="btn" href="demo.html" data-goatcounter-click="en-landing-hero-demo">Drop in your log — answer in 10 seconds</a>
       <a class="btn ghost" href="#how">How it works</a>
     </div>
     <p class="hero-note">Work in progress. The Claude Code analyzer already works: in your browser for one session, and your file never leaves it; in the terminal for all your sessions at once: <code>npx github:SergHomka/why-so-expensive-landing</code></p>
@@ -237,7 +248,7 @@
     </div>
 
     <div class="fact">
-      <p><strong>Why this matters more now.</strong> On August 24, 2026, Cursor switched to per-token billing. A huge audience is seeing a bill they don't understand for the first time.</p>
+      <p><strong>Why this matters more now.</strong> On August 24, 2026, Cursor switched to per-token billing. A huge audience is seeing a bill they don't understand for the first time. Cursor support comes in a later update: we start with Claude Code, where the data is exact.</p>
       <p style="margin-top:10px"><strong>On a subscription?</strong> Claude Pro and Max don't send you a bill, but the usage limit runs out by lunchtime. The causes are the same: a bloated conversation, the model going in circles, background tasks running without you. That's what we look for.</p>
     </div>
   </div>
@@ -255,13 +266,14 @@
         <span>sample answer</span>
       </div>
       <div class="terminal-body">
-        <div class="q"><b>&gt;</b> why was yesterday so expensive?</div>
-        <div class="row">Yesterday: <span class="hl">$14.20</span>. Of that, <span class="hl">$8.60</span> was a single session in project <span class="hl">shop-api</span>.</div>
-        <div class="row"><b>Cause:</b> the file <span class="hl">schema.sql</span> (420 lines) was sent to the model 11 times in a row.</div>
-        <div class="row"><b>Fix:</b> exclude it or compact the context. Savings: <span class="hl">$6–7 a week</span>.</div>
+        <div class="q"><b>&gt;</b> why did this session cost so much?</div>
+        <div class="row">Session in project <span class="hl">shop-api</span>: <span class="hl">$9.62</span> — 5 requests from you, 49 model steps.</div>
+        <div class="row"><b>Main thing:</b> you worked in one window for a long time, and by the end the model was rereading about 250 pages for every message you sent.</div>
+        <div class="row"><b>Also:</b> the file <span class="hl">schema.sql</span> was opened 16 times, errors and retries cost $0.61, and a background server woke the model without you for $0.88.</div>
+        <div class="row"><b>Fix:</b> finished a task? Type /clear. Savings: up to <span class="hl">$5.04</span>.</div>
       </div>
     </div>
-    <p class="caption">The example shows the answer format; the numbers are illustrative. <a href="demo.html" style="color:var(--accent)">Try it on your own Claude Code session →</a></p>
+    <p class="caption">This is a real, shortened report on the sample session from the demo. <a href="demo.html" style="color:var(--accent)" data-goatcounter-click="en-landing-example-demo">Open it in full or check your own session →</a></p>
   </div>
 </section>
 
@@ -340,8 +352,8 @@
         <p>Every number is flagged as exact or estimated. For Cursor there's no full picture locally, and we say so plainly.</p>
       </div>
       <div class="card">
-        <h3>Code on GitHub</h3>
-        <p>The command-line version already works and is free. A Claude Code skill and an MCP server come next. A paid cloud comes later, once there's something worth storing in it.</p>
+        <h3>Open source on GitHub</h3>
+        <p>The code is open under the MIT license. The command-line version already works and is free. A Claude Code skill and an MCP server come next. A paid cloud comes later, once there's something worth storing in it.</p>
       </div>
       <div class="card">
         <h3>Built by an incident investigator</h3>

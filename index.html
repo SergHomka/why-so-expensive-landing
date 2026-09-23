@@ -8,6 +8,17 @@
 <meta name="description" content="Диагностика расходов на Claude Code, Codex, Cursor и OpenRouter: не «сколько», а «почему столько и что сделать».">
 <link rel="alternate" hreflang="ru" href="https://serghomka.github.io/why-so-expensive-landing/">
 <link rel="alternate" hreflang="en" href="https://serghomka.github.io/why-so-expensive-landing/en/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Почему мой AI столько стоит">
+<meta property="og:description" content="Не «сколько вы потратили на Claude Code», а «почему столько и что сделать». Десять проверок, разбор прямо в браузере.">
+<meta property="og:url" content="https://serghomka.github.io/why-so-expensive-landing/">
+<meta property="og:image" content="https://serghomka.github.io/why-so-expensive-landing/og-ru.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="ru_RU">
+<meta name="twitter:card" content="summary_large_image">
+<!-- счётчик посещений GoatCounter: без cookies, без данных из ваших файлов -->
+<script data-goatcounter="https://whysoexpensive.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
 <style>
   :root {
     --bg: #ffffff;
@@ -212,7 +223,7 @@
     <h1>Счёт пришёл, а за что платил — <span class="accent">непонятно.</span> Объясним.</h1>
     <p class="lead">Не «сколько вы потратили», а «почему столько и что сделать». Читаем локальные логи AI-инструментов и называем конкретную причину с суммой и действием.</p>
     <div class="actions">
-      <a class="btn" href="demo.html">Загрузите свой лог — ответ за 10 секунд</a>
+      <a class="btn" href="demo.html" data-goatcounter-click="landing-hero-demo">Загрузите свой лог — ответ за 10 секунд</a>
       <a class="btn ghost" href="#how">Как это работает</a>
     </div>
     <p class="hero-note">Проект в разработке. Разбор для Claude Code уже работает: в браузере — по одной сессии, файл никуда не отправляется; в терминале — по всем сессиям сразу: <code>npx github:SergHomka/why-so-expensive-landing</code></p>
@@ -237,7 +248,7 @@
     </div>
 
     <div class="fact">
-      <p><strong>Почему это стало острее сейчас.</strong> 24 августа 2026 года Cursor перешёл на оплату по токенам. Огромная аудитория впервые видит счёт, который не понимает.</p>
+      <p><strong>Почему это стало острее сейчас.</strong> 24 августа 2026 года Cursor перешёл на оплату по токенам. Огромная аудитория впервые видит счёт, который не понимает. Cursor поддержим в следующих обновлениях: начинаем с Claude Code, по нему данные точные.</p>
       <p style="margin-top:10px"><strong>А если у вас подписка?</strong> На Claude Pro или Max счёта нет, зато лимит кончается к обеду. Причины те же самые: разрослась переписка, модель ходит по кругу, фоновые задачи работают без вас. Их и ищем.</p>
     </div>
   </div>
@@ -255,13 +266,14 @@
         <span>пример ответа</span>
       </div>
       <div class="terminal-body">
-        <div class="q"><b>&gt;</b> почему вчера было так дорого?</div>
-        <div class="row">Вчера: <span class="hl">14,20 $</span>. Из них <span class="hl">8,60 $</span> — одна сессия в проекте <span class="hl">shop-api</span>.</div>
-        <div class="row"><b>Причина:</b> файл <span class="hl">schema.sql</span> (420 строк) отправлялся в модель 11 раз подряд.</div>
-        <div class="row"><b>Что сделать:</b> добавить его в исключения или сжать контекст. Экономия: <span class="hl">6–7 $ в неделю</span>.</div>
+        <div class="q"><b>&gt;</b> почему сессия вышла такой дорогой?</div>
+        <div class="row">Сессия в проекте <span class="hl">shop-api</span>: <span class="hl">$9,62</span> — 5 ваших просьб, 49 шагов модели.</div>
+        <div class="row"><b>Главное:</b> вы долго работали в одном окне, и к концу модель перечитывала около 250 страниц на каждое ваше сообщение.</div>
+        <div class="row"><b>Ещё:</b> файл <span class="hl">schema.sql</span> открывался 16 раз, ошибки и повторные попытки стоили $0,61, фоновый сервер будил модель без вас на $0,88.</div>
+        <div class="row"><b>Что сделать:</b> закончили задачу — наберите /clear. Экономия — до <span class="hl">$5,04</span>.</div>
       </div>
     </div>
-    <p class="caption">Пример иллюстрирует формат ответа, цифры условные. <a href="demo.html" style="color:var(--accent)">Проверьте на своей сессии Claude Code →</a></p>
+    <p class="caption">Это настоящий отчёт по учебному примеру из демо, сокращённый. <a href="demo.html" style="color:var(--accent)" data-goatcounter-click="landing-example-demo">Откройте его целиком или проверьте свою сессию →</a></p>
   </div>
 </section>
 
@@ -340,8 +352,8 @@
         <p>У каждой цифры есть пометка: точная или оценочная. Для Cursor полной картины локально нет, и мы прямо так и пишем.</p>
       </div>
       <div class="card">
-        <h3>Код на GitHub</h3>
-        <p>Консольная версия уже работает и бесплатна. Следом — скилл для Claude Code и MCP-сервер. Платное облако появится позже, когда будет что в нём хранить.</p>
+        <h3>Открытый код на GitHub</h3>
+        <p>Код открыт по лицензии MIT. Консольная версия уже работает и бесплатна. Следом — скилл для Claude Code и MCP-сервер. Платное облако появится позже, когда будет что в нём хранить.</p>
       </div>
       <div class="card">
         <h3>Автор разбирает инциденты</h3>
