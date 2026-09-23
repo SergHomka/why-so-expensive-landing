@@ -18,6 +18,10 @@
 <meta property="og:locale" content="ru_RU">
 <meta name="twitter:card" content="summary_large_image">
 <!-- счётчик посещений GoatCounter: без cookies, без данных из ваших файлов -->
+<script>
+// «…/index.html» и «…/» — одна и та же страница: считаем её одной строкой
+window.goatcounter = { path: function (p) { return p.replace(/index.html$/, ''); } };
+</script>
 <script data-goatcounter="https://doyrden.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
 <style>
   :root {
@@ -223,7 +227,7 @@
     <h1>Счёт пришёл, а за что платил — <span class="accent">непонятно.</span> Объясним.</h1>
     <p class="lead">Не «сколько вы потратили», а «почему столько и что сделать». Читаем локальные логи AI-инструментов и называем конкретную причину с суммой и действием.</p>
     <div class="actions">
-      <a class="btn" href="demo.html" data-goatcounter-click="landing-hero-demo">Загрузите свой лог — ответ за 10 секунд</a>
+      <a class="btn" href="demo.html" data-goatcounter-click="ru-landing-hero-demo">Загрузите свой лог — ответ за 10 секунд</a>
       <a class="btn ghost" href="#how">Как это работает</a>
     </div>
     <p class="hero-note">Проект в разработке. Разбор для Claude Code уже работает: в браузере — по одной сессии, файл никуда не отправляется; в терминале — по всем сессиям сразу: <code>npx github:SergHomka/why-so-expensive-landing</code></p>
@@ -273,7 +277,7 @@
         <div class="row"><b>Что сделать:</b> закончили задачу — наберите /clear. Экономия — до <span class="hl">$5,04</span>.</div>
       </div>
     </div>
-    <p class="caption">Это настоящий отчёт по учебному примеру из демо, сокращённый. <a href="demo.html" style="color:var(--accent)" data-goatcounter-click="landing-example-demo">Откройте его целиком или проверьте свою сессию →</a></p>
+    <p class="caption">Это настоящий отчёт по учебному примеру из демо, сокращённый. <a href="demo.html" style="color:var(--accent)" data-goatcounter-click="ru-landing-example-demo">Откройте его целиком или проверьте свою сессию →</a></p>
   </div>
 </section>
 
